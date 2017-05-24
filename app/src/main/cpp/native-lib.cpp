@@ -10,28 +10,10 @@
 #include <string.h>
 #include <stdlib.h>
 #include <android/log.h>
+#include "teslameter_3mhx-cdi/cdi_rtcomm.h"
+#include "teslameter_3mhx-cdi/io.h"
+#include "rtcomm/rtcomm.h"
 
-/* ---------------------------------------------------------------------------------------------- *
- * RTCOMM interface
- * ---------------------------------------------------------------------------------------------- */
-
-#define RTCOMM_NAME                     "rtcomm"
-
-#define RTCOMM_IOC_MAGIC                'r'
-
-#define RTCOMM_GET_VERSION              _IOW(RTCOMM_IOC_MAGIC, 200, char [20])
-
-#define RTCOMM_SET_SIZE                 _IOR(RTCOMM_IOC_MAGIC, 100, int)
-
-#define RTCOMM_GET_FIFO_PID             _IOW(RTCOMM_IOC_MAGIC, 103, signed long long)
-
-#define RTCOMM_INIT                     _IO(RTCOMM_IOC_MAGIC, 1)
-
-#define RTCOMM_START                    _IO(RTCOMM_IOC_MAGIC, 2)
-
-#define RTCOMM_STOP                     _IO(RTCOMM_IOC_MAGIC, 3)
-
-#define RTCOMM_TERM                     _IO(RTCOMM_IOC_MAGIC, 4)
 
 /* ---------------------------------------------------------------------------------------------- *
  * Android log function wrappers
@@ -50,13 +32,12 @@ static const char* kTAG = "rtcomm-jni";
  * ---------------------------------------------------------------------------------------------- */
 
 static int g_counter;
-static int g_buffer_size = 10000;
 static int g_fd;
 
 /*
  * Allocate 64kB buffer to store data
  */
-static char g_buffer[64 * 1024];
+static struct acq_buffer g_buffer;
 
 /* ---------------------------------------------------------------------------------------------- *
  * Initialization
@@ -67,6 +48,8 @@ jint
 Java_com_teslameter_nr_teslameter_MainActivity_init(
         JNIEnv *env,
         jobject /* this */) {
+
+    return (0);
 }
 
 /* ---------------------------------------------------------------------------------------------- *
@@ -92,9 +75,8 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXraw(
         JNIEnv *env,
         jobject /* this */) {
     static char buffer[100];
-    int * value = (int *)&g_buffer[0];
 
-    snprintf(buffer, sizeof(buffer), "%d", value[0]);
+    snprintf(buffer, sizeof(buffer), "%d", sample_get_int(&g_buffer.sample[0], 0));
     return env->NewStringUTF(buffer);
 }
 
@@ -104,9 +86,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYraw(
         JNIEnv *env,
         jobject /* this */) {
     static char buffer[100];
-    int * value = (int *)&g_buffer[0];
-
-    snprintf(buffer, sizeof(buffer), "%d", value[1]);
+    snprintf(buffer, sizeof(buffer), "%d", sample_get_int(&g_buffer.sample[0], 1));
     return env->NewStringUTF(buffer);
 }
 
@@ -116,9 +96,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZraw(
         JNIEnv *env,
         jobject /* this */) {
     static char buffer[100];
-    int * value = (int *)&g_buffer[0];
-
-    snprintf(buffer, sizeof(buffer), "%d", value[2]);
+    snprintf(buffer, sizeof(buffer), "%d", sample_get_int(&g_buffer.sample[0], 2));
     return env->NewStringUTF(buffer);
 }
 
@@ -155,6 +133,19 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZvoltage(
     return env->NewStringUTF(buffer);
 }
 
+extern "C"
+jstring
+Java_com_teslameter_nr_teslameter_MainActivity_dataGetStats(
+        JNIEnv *env,
+        jobject /* this */) {
+    static char buffer[100];
+
+    snprintf(buffer, sizeof(buffer), "c%d s%d t%d", g_buffer.header.h.header.stats.complete_err,
+            g_buffer.header.h.header.stats.skipped_err,
+            g_buffer.header.h.header.stats.transfer_err);
+    return env->NewStringUTF(buffer);
+}
+
 /* ---------------------------------------------------------------------------------------------- *
  * Sampling control
  * ---------------------------------------------------------------------------------------------- */
@@ -165,7 +156,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingOpen(
         JNIEnv *env,
         jobject /* this */) {
     char version[20];
-
+    int buffer_size = sizeof(g_buffer);
 
     g_fd = open("/dev/" RTCOMM_NAME, O_RDONLY);
 
@@ -174,7 +165,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingOpen(
 
         return (1);
     } else {
-        LOGI("Opened /dev/" RTCOMM_NAME "\n", version);
+        LOGI("Opened /dev/" RTCOMM_NAME "\n");
     }
 
     if (ioctl(g_fd, RTCOMM_GET_VERSION, version) == -1) {
@@ -185,12 +176,12 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingOpen(
         LOGI("RTCOMM_GET_VERSION get: %s\n", version);
     }
 
-    if (ioctl(g_fd, RTCOMM_SET_SIZE, &g_buffer_size) == -1) {
+    if (ioctl(g_fd, RTCOMM_SET_SIZE, &buffer_size) == -1) {
         LOGE("RTCOMM_SET_SIZE failed: %d\n", errno);
 
         return (1);
     } else {
-        LOGI("RTCOMM_SET_SIZE set: %d\n", g_buffer_size);
+        LOGI("RTCOMM_SET_SIZE set: %d\n", buffer_size);
     }
 
     if (ioctl(g_fd, RTCOMM_INIT)) {
@@ -222,18 +213,18 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingRefresh(
     uint32_t        to_idx;
     uint32_t        idxl;
 
-    ret = read(g_fd, g_buffer, g_buffer_size);
+    ret = read(g_fd, &g_buffer, sizeof(g_buffer));
 
-    if (ret != g_buffer_size) {
+    if (ret != sizeof(g_buffer)) {
         if (ret == -1) {
             LOGE("Failed to read, error: %d\n", errno);
         } else {
-            LOGE("Failed to read %d bytes, error: %d\n", g_buffer_size, ret);
+            LOGE("Failed to read %d bytes, error: %d\n", sizeof(g_buffer), ret);
         }
 
         return (1);
     }
-    LOGI("pass %05d: read %d bytes\n", g_counter++, g_buffer_size);
+    LOGI("pass %05d: read %d bytes\n", g_counter++, sizeof(g_buffer));
 
     return (0);
 }

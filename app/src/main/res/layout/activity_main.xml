@@ -227,4 +227,17 @@
         android:layout_toRightOf="@id/aux2_raw"
         android:layout_below="@+id/aux1_voltage"/>
 
+    <TextView
+        android:id="@+id/stats"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:height="@dimen/value_height"
+        android:width="@dimen/value_width"
+        android:text="c0 s0 t0"
+        android:textAlignment="textEnd"
+        android:padding="10dp"
+        android:textSize="18dp"
+        android:fontFamily="monospace"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true" />
 </RelativeLayout>
