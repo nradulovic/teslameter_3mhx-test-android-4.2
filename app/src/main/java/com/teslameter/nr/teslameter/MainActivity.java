@@ -14,6 +14,7 @@ public class MainActivity extends Activity {
     private TextView tvXvoltage;
     private TextView tvYvoltage;
     private TextView tvZvoltage;
+    private TextView tvStats;
     private Runnable refrestTask;
     private Runnable consumerTask;
     private Thread consumerThread;
@@ -36,6 +37,7 @@ public class MainActivity extends Activity {
         tvXvoltage = (TextView) findViewById(R.id.x_voltage);
         tvYvoltage = (TextView) findViewById(R.id.y_voltage);
         tvZvoltage = (TextView) findViewById(R.id.z_voltage);
+        tvStats = (TextView) findViewById(R.id.stats);
 
         refrestTask = new Runnable() {
             @Override
@@ -47,6 +49,7 @@ public class MainActivity extends Activity {
                 tvXvoltage.setText(dataGetXvoltage());
                 tvYvoltage.setText(dataGetYvoltage());
                 tvZvoltage.setText(dataGetZvoltage());
+                tvStats.setText(dataGetStats());
                 dataRelease();
             }
         };
@@ -158,6 +161,7 @@ public class MainActivity extends Activity {
     public native String dataGetXvoltage();
     public native String dataGetYvoltage();
     public native String dataGetZvoltage();
+    public native String dataGetStats();
     public native void dataAcquire();
     public native void dataRelease();
     public native int samplingOpen();
