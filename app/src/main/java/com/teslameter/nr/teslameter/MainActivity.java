@@ -133,6 +133,8 @@ public class MainActivity extends Activity {
         };
         shouldExit = false;
 
+        rtcommInit(0);
+
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
 
         consumerThread = new Thread(consumerTask);
@@ -167,4 +169,5 @@ public class MainActivity extends Activity {
     public native int samplingOpen();
     public native int samplingRefresh();
     public native int samplingClose();
+    public native int rtcommInit(int mode);
 }
