@@ -10,7 +10,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <android/log.h>
-#include "teslameter_3mhx-cdi/cdi_rtcomm.h"
 #include "teslameter_3mhx-cdi/io.h"
 #include "rtcomm/rtcomm.h"
 
@@ -37,7 +36,8 @@ static int g_fd;
 /*
  * Allocate 64kB buffer to store data
  */
-static struct acq_buffer g_buffer;
+static struct io_buffer g_buffer;
+>>>>>>> Stashed changes
 
 /* ---------------------------------------------------------------------------------------------- *
  * Initialization
@@ -76,7 +76,8 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXraw(
         jobject /* this */) {
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", sample_get_int(&g_buffer.sample[0], 0));
+    snprintf(buffer, sizeof(buffer), "%d", g_buffer.sample[0][IO_CHANNEL_X]);
+   
     return env->NewStringUTF(buffer);
 }
 
@@ -86,7 +87,9 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYraw(
         JNIEnv *env,
         jobject /* this */) {
     static char buffer[100];
-    snprintf(buffer, sizeof(buffer), "%d", sample_get_int(&g_buffer.sample[0], 1));
+
+    snprintf(buffer, sizeof(buffer), "%d", g_buffer.sample[0][IO_CHANNEL_Y]);
+    
     return env->NewStringUTF(buffer);
 }
 
@@ -96,7 +99,9 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZraw(
         JNIEnv *env,
         jobject /* this */) {
     static char buffer[100];
-    snprintf(buffer, sizeof(buffer), "%d", sample_get_int(&g_buffer.sample[0], 2));
+
+    snprintf(buffer, sizeof(buffer), "%d", g_buffer.sample[0][IO_CHANNEL_Z]);
+    
     return env->NewStringUTF(buffer);
 }
 
@@ -108,6 +113,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXvoltage(
     static char buffer[100];
 
     snprintf(buffer, sizeof(buffer), "%.3f", g_counter * 1.111);
+
     return env->NewStringUTF(buffer);
 }
 
@@ -119,6 +125,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYvoltage(
     static char buffer[100];
 
     snprintf(buffer, sizeof(buffer), "%.3f", g_counter * 1.222);
+
     return env->NewStringUTF(buffer);
 }
 
@@ -130,6 +137,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZvoltage(
     static char buffer[100];
 
     snprintf(buffer, sizeof(buffer), "%.3f", g_counter * 1.333);
+
     return env->NewStringUTF(buffer);
 }
 
@@ -140,9 +148,8 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetStats(
         jobject /* this */) {
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "c%d s%d t%d", g_buffer.header.h.header.stats.complete_err,
-            g_buffer.header.h.header.stats.skipped_err,
-            g_buffer.header.h.header.stats.transfer_err);
+    snprintf(buffer, sizeof(buffer), "c%d", g_buffer.stats.ctrl_err);
+    
     return env->NewStringUTF(buffer);
 }
 
