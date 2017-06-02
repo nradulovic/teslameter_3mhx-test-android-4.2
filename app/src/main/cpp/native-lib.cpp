@@ -37,7 +37,6 @@ static int g_fd;
  * Allocate 64kB buffer to store data
  */
 static struct io_buffer g_buffer;
->>>>>>> Stashed changes
 
 /* ---------------------------------------------------------------------------------------------- *
  * Initialization
