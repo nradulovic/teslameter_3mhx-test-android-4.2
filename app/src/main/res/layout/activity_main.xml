@@ -233,11 +233,12 @@
         android:layout_height="wrap_content"
         android:height="@dimen/value_height"
         android:width="@dimen/value_width"
-        android:text="c0 s0 t0"
+        android:text="errors not updated"
         android:textAlignment="textEnd"
         android:padding="10dp"
         android:textSize="18dp"
         android:fontFamily="monospace"
         android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true" />
+        android:layout_alignParentEnd="true"
+        android:layout_toEndOf="@+id/aux2_legend" />
 </RelativeLayout>

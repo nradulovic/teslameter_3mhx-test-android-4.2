@@ -67,7 +67,7 @@ static void sim_populate_buffer(struct rtcomm_ctx * ctx)
     ctx->io_buffer.header.crc = 0;
     ctx->io_buffer.header.frame = counter++;
     ctx->io_buffer.header.magic = RTCOMM_HEADER_MAGIC;
-    ctx->io_buffer.stats.ctrl_err = 3;
+    ctx->io_buffer.stats.total_errors = 3;
 
     ctx->io_buffer.sample[0][IO_CHANNEL_X] = counter * 1.111;
     ctx->io_buffer.sample[0][IO_CHANNEL_Y] = counter * 1.222;
@@ -175,7 +175,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXvoltage(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%.3f", ctx->io_buffer.sample[0][IO_CHANNEL_X] * 0.0006);
+    snprintf(buffer, sizeof(buffer), "%.3f", ctx->io_buffer.sample[0][IO_CHANNEL_X] * 0.0006056);
 
     return env->NewStringUTF(buffer);
 }
@@ -188,7 +188,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYvoltage(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%.3f", ctx->io_buffer.sample[0][IO_CHANNEL_Y] * 0.0006);
+    snprintf(buffer, sizeof(buffer), "%.3f", ctx->io_buffer.sample[0][IO_CHANNEL_Y] * 0.0006056);
 
     return env->NewStringUTF(buffer);
 }
@@ -201,7 +201,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZvoltage(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%.3f", ctx->io_buffer.sample[0][IO_CHANNEL_Z] * 0.0006);
+    snprintf(buffer, sizeof(buffer), "%.3f", ctx->io_buffer.sample[0][IO_CHANNEL_Z] * 0.0006056);
 
     return env->NewStringUTF(buffer);
 }
@@ -212,9 +212,18 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetStats(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
-    static char buffer[100];
+    static char buffer[300];
 
-    snprintf(buffer, sizeof(buffer), "c%d", ctx->io_buffer.stats.ctrl_err);
+    snprintf(buffer, sizeof(buffer), "te%d,rcf%d,cce%d,cde%d,ae%d,nre%d,rse%d,rte%d,rce%d",
+            ctx->io_buffer.stats.total_errors,
+            ctx->io_buffer.stats.runtime_check_failed,
+            ctx->io_buffer.stats.ctrl_comm_err,
+            ctx->io_buffer.stats.ctrl_data_err,
+            ctx->io_buffer.stats.ads_err,
+            ctx->io_buffer.stats.no_resource_err,
+            ctx->io_buffer.stats.rtcomm_skipped_err,
+            ctx->io_buffer.stats.rtcomm_transfer_err,
+            ctx->io_buffer.stats.rtcomm_complete_err);
     
     return env->NewStringUTF(buffer);
 }
@@ -286,9 +295,6 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingRefresh(
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
     int             ret;
-    uint32_t        idx;
-    uint32_t        to_idx;
-    uint32_t        idxl;
 
     if (ctx->mode == RTCOMM_JNI_MODE_SIMULATION) {
         struct timespec tm;
@@ -311,7 +317,6 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingRefresh(
 
         return (1);
     }
-    LOGI("pass %05d: read %d bytes\n", 0, sizeof(ctx->io_buffer));
 
     return (0);
 }
