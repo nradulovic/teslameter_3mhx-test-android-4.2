@@ -58,6 +58,8 @@ public class MainActivity extends Activity {
             public void run() {
             int error;
 
+            rtcommInit(0);
+
             error = samplingOpen();
 
             if (error != 0) {
@@ -81,7 +83,6 @@ public class MainActivity extends Activity {
                 return;
             }
             while(!shouldExit) {
-                SystemClock.sleep(100);
                 error = samplingRefresh();
 
                 if (error == 0) {
@@ -132,8 +133,6 @@ public class MainActivity extends Activity {
             }
         };
         shouldExit = false;
-
-        rtcommInit(0);
 
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
 
