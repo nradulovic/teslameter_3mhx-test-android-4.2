@@ -228,6 +228,21 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetStats(
     return env->NewStringUTF(buffer);
 }
 
+extern "C"
+jstring
+Java_com_teslameter_nr_teslameter_MainActivity_dataGetInfos(
+        JNIEnv *env,
+        jobject /* this */) {
+    struct rtcomm_ctx *         ctx = &g_ctx;
+    static char buffer[300];
+
+    snprintf(buffer, sizeof(buffer), "ds%d,f%d",
+             ctx->io_buffer.header.data_size,
+             ctx->io_buffer.header.frame);
+
+    return env->NewStringUTF(buffer);
+}
+
 /* -- Sampling control -------------------------------------------------------------------------- */
 
 extern "C"

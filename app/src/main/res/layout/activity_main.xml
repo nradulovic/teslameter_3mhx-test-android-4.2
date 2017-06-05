@@ -233,7 +233,7 @@
         android:layout_height="wrap_content"
         android:height="@dimen/value_height"
         android:width="@dimen/value_width"
-        android:text="errors not updated"
+        android:text="stats not updated"
         android:textAlignment="textEnd"
         android:padding="10dp"
         android:textSize="18dp"
@@ -241,4 +241,18 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:layout_toEndOf="@+id/aux2_legend" />
+
+    <TextView
+        android:id="@+id/infos"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:height="@dimen/value_height"
+        android:layout_above="@+id/stats"
+        android:layout_alignStart="@+id/stats"
+        android:text="infos not updated"
+        android:textAlignment="textEnd"
+        android:padding="10dp"
+        android:textSize="18dp"
+        android:fontFamily="monospace"
+        android:layout_alignParentEnd="true" />
 </RelativeLayout>
