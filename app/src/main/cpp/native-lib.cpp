@@ -18,7 +18,9 @@
  * Data types
  * ---------------------------------------------------------------------------------------------- */
 
-
+#define VREF                            2.5
+#define VQUANT_MV                       (((VREF * 2.0) / (8388608 - 1)) * 1000.0)
+#define WINDOW_SIZE                     800
 
 /* -- RTCOMM-JNI working mode -- */
 enum rtcomm_jni_mode {
@@ -35,6 +37,14 @@ struct rtcomm_ctx
     int                         driver_fd;
     /* Allocate buffer to store data comming from RTCOMM driver */
     struct io_buffer            io_buffer;
+    /* Post process buffer */
+    struct pp_buffer
+    {
+        struct pp_buffer_raw {
+            int                         probe_value[IO_PROBE_CHANNELS];
+            int                         probe_window[WINDOW_SIZE][IO_PROBE_CHANNELS];
+        }                           raw;
+    }                           pp_buffer;
 };
 
 /* ---------------------------------------------------------------------------------------------- *
@@ -73,6 +83,64 @@ static void sim_populate_buffer(struct rtcomm_ctx * ctx)
     ctx->io_buffer.sample[0][IO_CHANNEL_Y] = counter * 1.222;
     ctx->io_buffer.sample[0][IO_CHANNEL_Z] = counter * 1.333;
 }
+
+static int io_buffer_get_no_samples(struct io_buffer * buffer)
+{
+    switch (buffer->param.vspeed) {
+        case IO_VSPEED_10SPS: return 1;
+        case IO_VSPEED_30SPS: return 3;
+        case IO_VSPEED_50SPS: return 5;
+        case IO_VSPEED_60SPS: return 6;
+        case IO_VSPEED_100SPS: return 10;
+        case IO_VSPEED_500SPS: return 50;
+        case IO_VSPEED_1000SPS: return 100;
+        case IO_VSPEED_2000SPS: return 200;
+        case IO_VSPEED_3750SPS: return 375;
+        case IO_VSPEED_7500SPS: return 750;
+        case IO_VSPEED_15000SPS: return 1500;
+        case IO_VSPEED_30000SPS: return 3000;
+        default: return -1;
+    }
+}
+
+static void post_process(struct rtcomm_ctx * ctx)
+{
+    uint32_t                    channel_id;
+    int32_t                     sample_idx;
+    int64_t                     sum[IO_PROBE_CHANNELS];
+    int32_t                     no_samples;
+
+    no_samples = io_buffer_get_no_samples(&ctx->io_buffer);
+
+    /* Calculate RAW probe value */
+
+    if (no_samples > 0) {
+
+        for (channel_id = 0; channel_id < IO_PROBE_CHANNELS; channel_id++) {
+            sum[channel_id] = 0;
+
+            for (sample_idx = 0; sample_idx < no_samples; sample_idx++) {
+                sum[channel_id] += ctx->io_buffer.sample[sample_idx][channel_id];
+            }
+            ctx->pp_buffer.raw.probe_value[channel_id] = sum[channel_id] / no_samples;
+        }
+    }
+}
+
+static int get_aux(struct rtcomm_ctx * ctx, int mchannel)
+{
+    /* Check boundaries  */
+    if (mchannel >= (sizeof(ctx->io_buffer.aux) / sizeof(ctx->io_buffer.aux[0]))) {
+        mchannel = sizeof(ctx->io_buffer.aux) / sizeof(ctx->io_buffer.aux[0]) - 1;
+    }
+
+    if (mchannel < 0) {
+        mchannel = 0;
+    }
+
+    return (ctx->io_buffer.aux[mchannel]);
+}
+
 
 /* ---------------------------------------------------------------------------------------------- *
  * Public methods
@@ -136,7 +204,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXraw(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", ctx->io_buffer.sample[0][IO_CHANNEL_X]);
+    snprintf(buffer, sizeof(buffer), "%d", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_X]);
    
     return env->NewStringUTF(buffer);
 }
@@ -149,7 +217,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYraw(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", ctx->io_buffer.sample[0][IO_CHANNEL_Y]);
+    snprintf(buffer, sizeof(buffer), "%d", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_Y]);
     
     return env->NewStringUTF(buffer);
 }
@@ -162,7 +230,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZraw(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", ctx->io_buffer.sample[0][IO_CHANNEL_Z]);
+    snprintf(buffer, sizeof(buffer), "%d", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_Z]);
     
     return env->NewStringUTF(buffer);
 }
@@ -175,7 +243,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXvoltage(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%.3f", ctx->io_buffer.sample[0][IO_CHANNEL_X] * 0.0006056);
+    snprintf(buffer, sizeof(buffer), "%.3f", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_X] * VQUANT_MV);
 
     return env->NewStringUTF(buffer);
 }
@@ -188,7 +256,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYvoltage(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%.3f", ctx->io_buffer.sample[0][IO_CHANNEL_Y] * 0.0006056);
+    snprintf(buffer, sizeof(buffer), "%.3f", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_Y] * VQUANT_MV);
 
     return env->NewStringUTF(buffer);
 }
@@ -201,9 +269,32 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZvoltage(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%.3f", ctx->io_buffer.sample[0][IO_CHANNEL_Z] * 0.0006056);
+    snprintf(buffer, sizeof(buffer), "%.3f", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_Z] * VQUANT_MV);
 
     return env->NewStringUTF(buffer);
+}
+
+
+extern "C"
+jint
+Java_com_teslameter_nr_teslameter_MainActivity_dataAuxRaw(
+        JNIEnv *env,
+        jobject /* this */,
+        jint mchannel) {
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
+    return (get_aux(ctx, mchannel));
+}
+
+extern "C"
+jfloat
+Java_com_teslameter_nr_teslameter_MainActivity_dataAuxVoltage(
+        JNIEnv *env,
+        jobject /* this */,
+        jint mchannel) {
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
+    return (get_aux(ctx, mchannel) * VQUANT_MV);
 }
 
 extern "C"
@@ -235,10 +326,25 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetInfos(
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[300];
+    static uint32_t             header_invalid_count;
+    static uint32_t             footer_invalid_count;
+    uint32_t                    data_size = 0;
+    uint32_t                    frame = 0;
+    bool                        is_valid_footer = false;
+    bool                        is_valid_header = false;
 
-    snprintf(buffer, sizeof(buffer), "ds%d,f%d",
-             ctx->io_buffer.header.data_size,
-             ctx->io_buffer.header.frame);
+    if (rtcomm_header_unpack(&ctx->io_buffer.header, &data_size, &frame)) {
+        is_valid_header = true;
+
+        if (rtcomm_footer_unpack(&ctx->io_buffer.footer, &ctx->io_buffer.header)) {
+            is_valid_footer = true;
+        }
+    }
+    header_invalid_count += is_valid_header ? 0 : 1;
+    footer_invalid_count += is_valid_footer ? 0 : 1;
+
+    snprintf(buffer, sizeof(buffer), "header e:%d,footer e:%d,ds%d,f%d", header_invalid_count,
+             footer_invalid_count, data_size, frame);
 
     return env->NewStringUTF(buffer);
 }
@@ -332,6 +438,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingRefresh(
 
         return (1);
     }
+    post_process(ctx);
 
     return (0);
 }

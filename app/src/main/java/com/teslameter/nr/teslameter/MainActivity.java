@@ -4,13 +4,16 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.widget.TextView;
 
 public class MainActivity extends Activity {
     private TextView tvXraw;
     private TextView tvYraw;
     private TextView tvZraw;
+    private TextView tvAux1raw;
+    private TextView tvAux2raw;
+    private TextView tvAux1Voltage;
+    private TextView tvAux2Voltage;
     private TextView tvXvoltage;
     private TextView tvYvoltage;
     private TextView tvZvoltage;
@@ -35,6 +38,10 @@ public class MainActivity extends Activity {
         tvXraw = (TextView) findViewById(R.id.x_raw);
         tvYraw = (TextView) findViewById(R.id.y_raw);
         tvZraw = (TextView) findViewById(R.id.z_raw);
+        tvAux1raw = (TextView) findViewById(R.id.aux1_raw);
+        tvAux2raw = (TextView) findViewById(R.id.aux2_raw);
+        tvAux1Voltage = (TextView) findViewById(R.id.aux1_voltage);
+        tvAux2Voltage = (TextView) findViewById(R.id.aux2_voltage);
         tvXvoltage = (TextView) findViewById(R.id.x_voltage);
         tvYvoltage = (TextView) findViewById(R.id.y_voltage);
         tvZvoltage = (TextView) findViewById(R.id.z_voltage);
@@ -48,6 +55,10 @@ public class MainActivity extends Activity {
                 tvXraw.setText(dataGetXraw());
                 tvYraw.setText(dataGetYraw());
                 tvZraw.setText(dataGetZraw());
+                tvAux1raw.setText(String.format("%d", dataAuxRaw(0)));
+                tvAux1Voltage.setText(String.format("%.3f", dataAuxVoltage(0)));
+                tvAux2raw.setText(String.format("%d", dataAuxRaw(1)));
+                tvAux2Voltage.setText(String.format("%.3f", dataAuxVoltage(1)));
                 tvXvoltage.setText(dataGetXvoltage());
                 tvYvoltage.setText(dataGetYvoltage());
                 tvZvoltage.setText(dataGetZvoltage());
@@ -165,6 +176,8 @@ public class MainActivity extends Activity {
     public native String dataGetXvoltage();
     public native String dataGetYvoltage();
     public native String dataGetZvoltage();
+    public native int dataAuxRaw(int mchannel);
+    public native float dataAuxVoltage(int mchannel);
     public native String dataGetStats();
     public native String dataGetInfos();
     public native void dataAcquire();
