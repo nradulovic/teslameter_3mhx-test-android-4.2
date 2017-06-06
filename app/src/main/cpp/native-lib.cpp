@@ -226,83 +226,34 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataRelease(
 }
 
 extern "C"
-jstring
+jint
 Java_com_teslameter_nr_teslameter_MainActivity_dataProbeXRaw(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
-    static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", get_probe_x_raw(ctx, IO_CHANNEL_X));
-   
-    return env->NewStringUTF(buffer);
+    return (get_probe_x_raw(ctx, IO_CHANNEL_X));
 }
 
 extern "C"
-jstring
+jint
 Java_com_teslameter_nr_teslameter_MainActivity_dataProbeYRaw(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
-    static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", get_probe_x_raw(ctx, IO_CHANNEL_Y));
-    
-    return env->NewStringUTF(buffer);
+    return (get_probe_x_raw(ctx, IO_CHANNEL_Y));
 }
 
 extern "C"
-jstring
+jint
 Java_com_teslameter_nr_teslameter_MainActivity_dataProbeZRaw(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
-    static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", get_probe_x_raw(ctx, IO_CHANNEL_Z));
-    
-    return env->NewStringUTF(buffer);
+    return (get_probe_x_raw(ctx, IO_CHANNEL_Z));
 }
-
-extern "C"
-jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataProbeXVoltage(
-        JNIEnv *env,
-        jobject /* this */) {
-    struct rtcomm_ctx *         ctx = &g_ctx;
-    static char buffer[100];
-
-    snprintf(buffer, sizeof(buffer), "%.3f", get_probe_x_raw(ctx, IO_CHANNEL_X) * VQUANT_MV);
-
-    return env->NewStringUTF(buffer);
-}
-
-extern "C"
-jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataProbeYVoltage(
-        JNIEnv *env,
-        jobject /* this */) {
-    struct rtcomm_ctx *         ctx = &g_ctx;
-    static char buffer[100];
-
-    snprintf(buffer, sizeof(buffer), "%.3f", get_probe_x_raw(ctx, IO_CHANNEL_Y) * VQUANT_MV);
-
-    return env->NewStringUTF(buffer);
-}
-
-extern "C"
-jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataProbeZVoltage(
-        JNIEnv *env,
-        jobject /* this */) {
-    struct rtcomm_ctx *         ctx = &g_ctx;
-    static char buffer[100];
-
-    snprintf(buffer, sizeof(buffer), "%.3f", get_probe_x_raw(ctx, IO_CHANNEL_Z) * VQUANT_MV);
-
-    return env->NewStringUTF(buffer);
-}
-
 
 extern "C"
 jint
@@ -313,6 +264,36 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataAuxRaw(
     struct rtcomm_ctx *         ctx = &g_ctx;
 
     return (get_aux_raw(ctx, mchannel));
+}
+
+extern "C"
+jfloat
+Java_com_teslameter_nr_teslameter_MainActivity_dataProbeXVoltage(
+        JNIEnv *env,
+        jobject /* this */) {
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
+    return (get_probe_x_raw(ctx, IO_CHANNEL_X) * VQUANT_MV);
+}
+
+extern "C"
+jfloat
+Java_com_teslameter_nr_teslameter_MainActivity_dataProbeYVoltage(
+        JNIEnv *env,
+        jobject /* this */) {
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
+    return (get_probe_x_raw(ctx, IO_CHANNEL_Y) * VQUANT_MV);
+}
+
+extern "C"
+jfloat
+Java_com_teslameter_nr_teslameter_MainActivity_dataProbeZVoltage(
+        JNIEnv *env,
+        jobject /* this */) {
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
+    return (get_probe_x_raw(ctx, IO_CHANNEL_Z) * VQUANT_MV);
 }
 
 extern "C"
