@@ -64,6 +64,9 @@ public class MainActivity extends Activity {
                 float zVoltage = dataProbeZVoltage();
                 float aux1Voltage = dataAuxVoltage(0);
                 float aux2Voltage = dataAuxVoltage(1);
+                String stats = dataGetStats();
+                String infos = dataGetInfos();
+                dataRelease();
 
                 tvXraw.setText(String.format(Locale.getDefault(), "%d",xRaw));
                 tvYraw.setText(String.format(Locale.getDefault(), "%d",yRaw));
@@ -77,9 +80,8 @@ public class MainActivity extends Activity {
                 tvAux1Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux1Voltage));
                 tvAux2Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux2Voltage));
 
-                tvStats.setText(dataGetStats());
-                tvInfos.setText(dataGetInfos());
-                dataRelease();
+                tvStats.setText(stats);
+                tvInfos.setText(infos);
             }
         };
         consumerTask = new Runnable() {
