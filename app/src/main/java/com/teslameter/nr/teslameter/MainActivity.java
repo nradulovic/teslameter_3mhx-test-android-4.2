@@ -70,80 +70,36 @@ public class MainActivity extends Activity {
         consumerTask = new Runnable() {
             @Override
             public void run() {
-            int error;
+                int error;
 
-            rtcommInit(0);
+                rtcommInit(0);
 
-            error = samplingOpen();
+                error = samplingOpen();
 
-            if (error != 0) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        alertDialog.setTitle("Error");
-                        alertDialog.setMessage("Failed to open sampling");
-                        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Exit",
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.dismiss();
-                                    android.os.Process.killProcess(android.os.Process.myPid());
-                                }
-                            });
-                        alertDialog.show();
-                    }
-                });
-                shouldExit = true;
-                return;
-            }
-            while(!shouldExit) {
-                error = samplingRefresh();
-
-                if (error == 0) {
-                    runOnUiThread(refrestTask);
-                } else {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            alertDialog.setTitle("Error");
-                            alertDialog.setMessage("Failed to refresh samples");
-                            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Exit",
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        dialog.dismiss();
-                                        android.os.Process.killProcess(android.os.Process.myPid());
-                                    }
-                                });
-                            alertDialog.show();
-                        }
-                    });
+                if (error != 0) {
                     shouldExit = true;
+                    gracefulExit(0, "Failed to open sampling", error);;
                     return;
                 }
-            }
-            error = samplingClose();
 
-            if (error != 0) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        alertDialog.setTitle("Error");
-                        alertDialog.setMessage("Failed to close sampling");
-                        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Exit",
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.dismiss();
-                                    android.os.Process.killProcess(android.os.Process.myPid());
-                                }
-                            });
-                        alertDialog.show();
+                while(!shouldExit) {
+                    error = samplingRefresh();
+
+                    if (error == 0) {
+                        runOnUiThread(refrestTask);
+                    } else {
+                        shouldExit = true;
+                        gracefulExit(0, "Failed to refresh sampling", error);
+                        return;
                     }
-                });
-                shouldExit = true;
-                return;
-            }
+                }
+                error = samplingClose();
+
+                if (error != 0) {
+                    shouldExit = true;
+                    gracefulExit(0, "Failed to close sampling", error);
+                    return;
+                }
             }
         };
         shouldExit = false;
@@ -164,6 +120,54 @@ public class MainActivity extends Activity {
         } catch (InterruptedException e) {
 
         }
+    }
+
+    void gracefulExit(final int msg_type, final String text, final int status) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                String title;
+                boolean shouldExit;
+
+                switch (msg_type) {
+                    case 0:
+                        title = "Error";
+                        shouldExit = true;
+                        break;
+                    case 1:
+                        title = "Warning";
+                        shouldExit = true;
+                        break;
+                    default:
+                        title = "Unknown";
+                        shouldExit = true;
+                        break;
+                }
+                alertDialog.setTitle(title);
+                alertDialog.setMessage(String.format("%s : %d", text, status));
+
+                if (shouldExit) {
+                    alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Exit",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.dismiss();
+                                    android.os.Process.killProcess(android.os.Process.myPid());
+                                }
+                            });
+                } else {
+                    alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Continue",
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.dismiss();
+                                }
+                            });
+                }
+
+                alertDialog.show();
+            }
+        });
     }
 
     /**

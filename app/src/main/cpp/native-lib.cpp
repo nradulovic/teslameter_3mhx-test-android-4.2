@@ -20,7 +20,7 @@
 
 #define VREF                            2.5
 #define VQUANT_MV                       (((VREF * 2.0) / (8388608 - 1)) * 1000.0)
-#define WINDOW_SIZE                     800
+#define WINDOW_BUFF_SIZE                800
 
 /* -- RTCOMM-JNI working mode -- */
 enum rtcomm_jni_mode {
@@ -35,15 +35,18 @@ struct rtcomm_ctx
     enum rtcomm_jni_mode        mode;
     /* File handle for RTCOMM driver */
     int                         driver_fd;
-    /* Allocate buffer to store data comming from RTCOMM driver */
+    /* Allocate buffer to store data coming from RTCOMM driver */
     struct io_buffer            io_buffer;
     /* Post process buffer */
     struct pp_buffer
     {
         struct pp_buffer_raw {
-            int                         probe_value[IO_PROBE_CHANNELS];
-            int                         probe_window[WINDOW_SIZE][IO_PROBE_CHANNELS];
+            int32_t                     aux_value[IO_AUX_CHANNELS];
+            int32_t                     probe_value[IO_PROBE_CHANNELS];
+            int32_t                     probe_window[WINDOW_BUFF_SIZE][IO_PROBE_CHANNELS];
+            int32_t                     probe_array[IO_BUFF_SIZE][IO_PROBE_CHANNELS];
         }                           raw;
+        uint32_t                    no_samples;
     }                           pp_buffer;
 };
 
@@ -112,33 +115,59 @@ static void post_process(struct rtcomm_ctx * ctx)
 
     no_samples = io_buffer_get_no_samples(&ctx->io_buffer);
 
+    if (no_samples < 1) {
+        /*
+         * TODO: Report an error about this
+         */
+        return;
+    }
+
+    /* Save AUX values */
+    memcpy(&ctx->pp_buffer.raw.aux_value[0], &ctx->io_buffer.aux[0],
+           sizeof(int32_t) * IO_AUX_CHANNELS);
+
     /* Calculate RAW probe value */
 
-    if (no_samples > 0) {
+    for (channel_id = 0; channel_id < IO_PROBE_CHANNELS; channel_id++) {
+        sum[channel_id] = 0;
 
-        for (channel_id = 0; channel_id < IO_PROBE_CHANNELS; channel_id++) {
-            sum[channel_id] = 0;
-
-            for (sample_idx = 0; sample_idx < no_samples; sample_idx++) {
-                sum[channel_id] += ctx->io_buffer.sample[sample_idx][channel_id];
-            }
-            ctx->pp_buffer.raw.probe_value[channel_id] = sum[channel_id] / no_samples;
+        for (sample_idx = 0; sample_idx < no_samples; sample_idx++) {
+            sum[channel_id] += ctx->io_buffer.sample[sample_idx][channel_id];
         }
+        ctx->pp_buffer.raw.probe_value[channel_id] = (int32_t)(sum[channel_id] / no_samples);
     }
+
+    /* Calculate WINDOW probe values */
+    if (no_samples <= WINDOW_BUFF_SIZE) {
+        memcpy(&ctx->pp_buffer.raw.probe_window[0][0], &ctx->io_buffer.sample[0][0],
+               sizeof(int32_t) * IO_PROBE_CHANNELS * no_samples);
+    } else {
+
+    }
+    /* Save all probe values */
+    memcpy(&ctx->pp_buffer.raw.probe_array[0][0], &ctx->io_buffer.sample[0][0],
+           sizeof(int32_t) * IO_PROBE_CHANNELS * no_samples);
+
+    /* Fill in no_samples */
+    ctx->pp_buffer.no_samples = (uint32_t)no_samples;
 }
 
-static int get_aux(struct rtcomm_ctx * ctx, int mchannel)
+static int32_t get_aux_raw(struct rtcomm_ctx *ctx, uint32_t mchannel)
 {
     /* Check boundaries  */
     if (mchannel >= (sizeof(ctx->io_buffer.aux) / sizeof(ctx->io_buffer.aux[0]))) {
-        mchannel = sizeof(ctx->io_buffer.aux) / sizeof(ctx->io_buffer.aux[0]) - 1;
+        /*
+         * TODO: Report an error about this
+         */
+        return (0);
     }
 
-    if (mchannel < 0) {
-        mchannel = 0;
-    }
+    return (ctx->pp_buffer.raw.aux_value[mchannel]);
+}
 
-    return (ctx->io_buffer.aux[mchannel]);
+static int32_t get_probe_x_raw(struct rtcomm_ctx * ctx, uint32_t channel)
+{
+    return (ctx->pp_buffer.raw.probe_value[channel]);
 }
 
 
@@ -204,7 +233,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXraw(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_X]);
+    snprintf(buffer, sizeof(buffer), "%d", get_probe_x_raw(ctx, IO_CHANNEL_X));
    
     return env->NewStringUTF(buffer);
 }
@@ -217,7 +246,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYraw(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_Y]);
+    snprintf(buffer, sizeof(buffer), "%d", get_probe_x_raw(ctx, IO_CHANNEL_Y));
     
     return env->NewStringUTF(buffer);
 }
@@ -230,7 +259,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZraw(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%d", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_Z]);
+    snprintf(buffer, sizeof(buffer), "%d", get_probe_x_raw(ctx, IO_CHANNEL_Z));
     
     return env->NewStringUTF(buffer);
 }
@@ -243,7 +272,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXvoltage(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%.3f", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_X] * VQUANT_MV);
+    snprintf(buffer, sizeof(buffer), "%.3f", get_probe_x_raw(ctx, IO_CHANNEL_X) * VQUANT_MV);
 
     return env->NewStringUTF(buffer);
 }
@@ -256,7 +285,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYvoltage(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%.3f", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_Y] * VQUANT_MV);
+    snprintf(buffer, sizeof(buffer), "%.3f", get_probe_x_raw(ctx, IO_CHANNEL_Y) * VQUANT_MV);
 
     return env->NewStringUTF(buffer);
 }
@@ -269,7 +298,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZvoltage(
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[100];
 
-    snprintf(buffer, sizeof(buffer), "%.3f", ctx->pp_buffer.raw.probe_value[IO_CHANNEL_Z] * VQUANT_MV);
+    snprintf(buffer, sizeof(buffer), "%.3f", get_probe_x_raw(ctx, IO_CHANNEL_Z) * VQUANT_MV);
 
     return env->NewStringUTF(buffer);
 }
@@ -283,7 +312,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataAuxRaw(
         jint mchannel) {
     struct rtcomm_ctx *         ctx = &g_ctx;
 
-    return (get_aux(ctx, mchannel));
+    return (get_aux_raw(ctx, mchannel));
 }
 
 extern "C"
@@ -294,7 +323,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataAuxVoltage(
         jint mchannel) {
     struct rtcomm_ctx *         ctx = &g_ctx;
 
-    return (get_aux(ctx, mchannel) * VQUANT_MV);
+    return (get_aux_raw(ctx, mchannel) * VQUANT_MV);
 }
 
 extern "C"
