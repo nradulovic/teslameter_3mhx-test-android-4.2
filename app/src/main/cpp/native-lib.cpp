@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <semaphore.h>
 #include <android/log.h>
 #include "teslameter_3mhx-cdi/io.h"
 #include "rtcomm/rtcomm.h"
@@ -35,6 +36,8 @@ struct rtcomm_ctx
     enum rtcomm_jni_mode        mode;
     /* File handle for RTCOMM driver */
     int                         driver_fd;
+    sem_t                       read_wait;
+    bool                        should_exit;
     /* Allocate buffer to store data coming from RTCOMM driver */
     struct io_buffer            io_buffer;
     /* Post process buffer */
@@ -195,6 +198,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_rtcommInit(
         default:
             ctx->mode = RTCOMM_JNI_MODE_NORMAL;
     }
+    sem_init(&ctx->read_wait, 0, 0);
 
     return (0);
 }
@@ -202,7 +206,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_rtcommInit(
 
 /* -- DATA access methods ----------------------------------------------------------------------- */
 extern "C"
-void
+jboolean
 Java_com_teslameter_nr_teslameter_MainActivity_dataAcquire(
         JNIEnv *env,
         jobject /* this */) {
@@ -210,12 +214,21 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataAcquire(
 
     switch (ctx->mode) {
         case RTCOMM_JNI_MODE_NORMAL:
+            if (ctx->should_exit) {
+                return (false);
+            }
+            sem_wait(&ctx->read_wait);
+
+            if (ctx->should_exit) {
+                return (false);
+            }
             break;
         case RTCOMM_JNI_MODE_SIMULATION: {
             sim_populate_buffer(ctx);
             break;
         }
     }
+    return (true);
 }
 
 extern "C"
@@ -435,20 +448,26 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingRefresh(
 
         nanosleep(&tm, NULL);
         return (0);
-    }
+    } else {
+        while (!ctx->should_exit) {
+            ret = read(ctx->driver_fd, &ctx->io_buffer, sizeof(ctx->io_buffer));
 
-    ret = read(ctx->driver_fd, &ctx->io_buffer, sizeof(ctx->io_buffer));
+            if (ret != sizeof(ctx->io_buffer)) {
+                if (ctx->should_exit) {
+                    break;
+                } else if (ret == -1) {
+                    LOGE("Failed to read, error: %d\n", errno);
+                } else {
+                    LOGE("Failed to read %d bytes, error: %d\n", sizeof(ctx->io_buffer), ret);
+                }
 
-    if (ret != sizeof(ctx->io_buffer)) {
-        if (ret == -1) {
-            LOGE("Failed to read, error: %d\n", errno);
-        } else {
-            LOGE("Failed to read %d bytes, error: %d\n", sizeof(ctx->io_buffer), ret);
+                return (1);
+            }
+            post_process(ctx);
+            sem_post(&ctx->read_wait);
         }
-
-        return (1);
+        sem_post(&ctx->read_wait);
     }
-    post_process(ctx);
 
     return (0);
 }
@@ -459,6 +478,8 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingClose(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
+
+    ctx->should_exit = true;
 
     if (ioctl(ctx->driver_fd, RTCOMM_STOP)) {
         LOGE("RTCOMM_STOP failed: %d\n", errno);
