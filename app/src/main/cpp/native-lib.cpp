@@ -227,7 +227,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataRelease(
 
 extern "C"
 jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataGetXraw(
+Java_com_teslameter_nr_teslameter_MainActivity_dataProbeXRaw(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
@@ -240,7 +240,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXraw(
 
 extern "C"
 jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataGetYraw(
+Java_com_teslameter_nr_teslameter_MainActivity_dataProbeYRaw(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
@@ -253,7 +253,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYraw(
 
 extern "C"
 jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataGetZraw(
+Java_com_teslameter_nr_teslameter_MainActivity_dataProbeZRaw(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
@@ -266,7 +266,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetZraw(
 
 extern "C"
 jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataGetXvoltage(
+Java_com_teslameter_nr_teslameter_MainActivity_dataProbeXVoltage(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
@@ -279,7 +279,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetXvoltage(
 
 extern "C"
 jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataGetYvoltage(
+Java_com_teslameter_nr_teslameter_MainActivity_dataProbeYVoltage(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;
@@ -292,7 +292,7 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetYvoltage(
 
 extern "C"
 jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataGetZvoltage(
+Java_com_teslameter_nr_teslameter_MainActivity_dataProbeZVoltage(
         JNIEnv *env,
         jobject /* this */) {
     struct rtcomm_ctx *         ctx = &g_ctx;

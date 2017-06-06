@@ -6,6 +6,8 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.widget.TextView;
 
+import java.util.Locale;
+
 public class MainActivity extends Activity {
     private TextView tvXraw;
     private TextView tvYraw;
@@ -35,33 +37,46 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        tvXraw = (TextView) findViewById(R.id.x_raw);
-        tvYraw = (TextView) findViewById(R.id.y_raw);
-        tvZraw = (TextView) findViewById(R.id.z_raw);
-        tvAux1raw = (TextView) findViewById(R.id.aux1_raw);
-        tvAux2raw = (TextView) findViewById(R.id.aux2_raw);
+        tvXraw =        (TextView) findViewById(R.id.x_raw);
+        tvYraw =        (TextView) findViewById(R.id.y_raw);
+        tvZraw =        (TextView) findViewById(R.id.z_raw);
+        tvAux1raw =     (TextView) findViewById(R.id.aux1_raw);
+        tvAux2raw =     (TextView) findViewById(R.id.aux2_raw);
         tvAux1Voltage = (TextView) findViewById(R.id.aux1_voltage);
         tvAux2Voltage = (TextView) findViewById(R.id.aux2_voltage);
-        tvXvoltage = (TextView) findViewById(R.id.x_voltage);
-        tvYvoltage = (TextView) findViewById(R.id.y_voltage);
-        tvZvoltage = (TextView) findViewById(R.id.z_voltage);
-        tvStats = (TextView) findViewById(R.id.stats);
-        tvInfos = (TextView) findViewById(R.id.infos);
+        tvXvoltage =    (TextView) findViewById(R.id.x_voltage);
+        tvYvoltage =    (TextView) findViewById(R.id.y_voltage);
+        tvZvoltage =    (TextView) findViewById(R.id.z_voltage);
+        tvStats =       (TextView) findViewById(R.id.stats);
+        tvInfos =       (TextView) findViewById(R.id.infos);
 
         refrestTask = new Runnable() {
             @Override
             public void run() {
                 dataAcquire();
-                tvXraw.setText(dataGetXraw());
-                tvYraw.setText(dataGetYraw());
-                tvZraw.setText(dataGetZraw());
-                tvAux1raw.setText(String.format("%d", dataAuxRaw(0)));
-                tvAux1Voltage.setText(String.format("%.3f", dataAuxVoltage(0)));
-                tvAux2raw.setText(String.format("%d", dataAuxRaw(1)));
-                tvAux2Voltage.setText(String.format("%.3f", dataAuxVoltage(1)));
-                tvXvoltage.setText(dataGetXvoltage());
-                tvYvoltage.setText(dataGetYvoltage());
-                tvZvoltage.setText(dataGetZvoltage());
+                int xRaw = dataProbeXRaw();
+                int yRaw = dataProbeYRaw();
+                int zRaw = dataProbeZRaw();
+                int aux1Raw = dataAuxRaw(0);
+                int aux2Raw = dataAuxRaw(1);
+                float xVoltage = dataProbeXVoltage();
+                float yVoltage = dataProbeYVoltage();
+                float zVoltage = dataProbeZVoltage();
+                float aux1Voltage = dataAuxVoltage(0);
+                float aux2Voltage = dataAuxVoltage(1);
+
+                tvXraw.setText(String.format(Locale.getDefault(), "%d",xRaw));
+                tvYraw.setText(String.format(Locale.getDefault(), "%d",yRaw));
+                tvZraw.setText(String.format(Locale.getDefault(), "%d",zRaw));
+                tvAux1raw.setText(String.format(Locale.getDefault(), "%d", aux1Raw));
+                tvAux2raw.setText(String.format(Locale.getDefault(), "%d", aux2Raw));
+
+                tvXvoltage.setText(String.format(Locale.getDefault(), "%.3f", xVoltage));
+                tvYvoltage.setText(String.format(Locale.getDefault(), "%.3f", yVoltage));
+                tvZvoltage.setText(String.format(Locale.getDefault(), "%.3f", zVoltage));
+                tvAux1Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux1Voltage));
+                tvAux2Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux2Voltage));
+
                 tvStats.setText(dataGetStats());
                 tvInfos.setText(dataGetInfos());
                 dataRelease();
@@ -174,18 +189,22 @@ public class MainActivity extends Activity {
      * A native method that is implemented by the 'native-lib' native library,
      * which is packaged with this application.
      */
-    public native String dataGetXraw();
-    public native String dataGetYraw();
-    public native String dataGetZraw();
-    public native String dataGetXvoltage();
-    public native String dataGetYvoltage();
-    public native String dataGetZvoltage();
+    public native int dataProbeXRaw();
+    public native int dataProbeYRaw();
+    public native int dataProbeZRaw();
     public native int dataAuxRaw(int mchannel);
+
+    public native float dataProbeXVoltage();
+    public native float dataProbeYVoltage();
+    public native float dataProbeZVoltage();
     public native float dataAuxVoltage(int mchannel);
+
     public native String dataGetStats();
     public native String dataGetInfos();
+
     public native void dataAcquire();
     public native void dataRelease();
+
     public native int samplingOpen();
     public native int samplingRefresh();
     public native int samplingClose();
