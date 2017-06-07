@@ -6,7 +6,9 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.widget.TextView;
 
+import java.io.IOException;
 import java.util.Locale;
+import java.util.concurrent.Semaphore;
 
 public class MainActivity extends Activity {
     private TextView tvXraw;
@@ -25,9 +27,13 @@ public class MainActivity extends Activity {
     private TextView tvEtempFinal;
     private Runnable refrestTask;
     private Runnable producerTask;
+    private Runnable consumerTask;
     private Thread producerThread;
+    private Thread consumerThread;
+    private Semaphore available;
     private boolean shouldExit;
     private AlertDialog alertDialog;
+    private ADT7410 adt7410;
 
     int xRaw;
     int yRaw;
@@ -68,6 +74,7 @@ public class MainActivity extends Activity {
         tvInfos =       (TextView) findViewById(R.id.infos);
         tvEtempRaw =    (TextView) findViewById(R.id.etemp_raw);
         tvEtempFinal =  (TextView) findViewById(R.id.etemp_final);
+        available = new Semaphore(0);
 
         refrestTask = new Runnable() {
             @Override
@@ -91,6 +98,45 @@ public class MainActivity extends Activity {
                 tvInfos.setText(infos);
             }
         };
+        consumerTask = new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    int val;
+
+                    try {
+                        available.acquire();
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+
+                    dataAcquire();
+                    xRaw = dataProbeXRaw();
+                    yRaw = dataProbeYRaw();
+                    zRaw = dataProbeZRaw();
+                    aux1Raw = dataAuxRaw(0);
+                    aux2Raw = dataAuxRaw(1);
+                    xVoltage = dataProbeXVoltage();
+                    yVoltage = dataProbeYVoltage();
+                    zVoltage = dataProbeZVoltage();
+                    aux1Voltage = dataAuxVoltage(0);
+                    aux2Voltage = dataAuxVoltage(1);
+                    stats = dataGetStats();
+                    infos = dataGetInfos();
+                    dataRelease();
+
+                    try {
+                        val = adt7410.readRawValue();
+                    } catch (IOException e) {
+                        val = 0;
+                    }
+                    etempRaw = val;
+                    etempFinal = adt7410.getTemp(etempRaw);
+
+                    runOnUiThread(refrestTask);
+                }
+            }
+        };
         producerTask = new Runnable() {
             @Override
             public void run() {
@@ -107,7 +153,6 @@ public class MainActivity extends Activity {
                 }
 
                 while(!shouldExit) {
-                    int status;
                     error = samplingRefresh();
 
                     if (error != 0) {
@@ -115,28 +160,7 @@ public class MainActivity extends Activity {
                         gracefulExit(0, "Failed to refresh sampling", error);
                         return;
                     }
-                    dataAcquire();
-                    xRaw = dataProbeXRaw();
-                    yRaw = dataProbeYRaw();
-                    zRaw = dataProbeZRaw();
-                    aux1Raw = dataAuxRaw(0);
-                    aux2Raw = dataAuxRaw(1);
-                    xVoltage = dataProbeXVoltage();
-                    yVoltage = dataProbeYVoltage();
-                    zVoltage = dataProbeZVoltage();
-                    aux1Voltage = dataAuxVoltage(0);
-                    aux2Voltage = dataAuxVoltage(1);
-                    stats = dataGetStats();
-                    infos = dataGetInfos();
-                    dataRelease();
-                    status = adt7410ReadTemp();
-
-                    if (status > 0) {
-                        etempRaw = status;
-                    }
-
-                    etempFinal = (float)(etempRaw * (1.0 / 128.0));
-                    runOnUiThread(refrestTask);
+                    available.release();
                 }
                 error = samplingClose();
 
@@ -153,8 +177,14 @@ public class MainActivity extends Activity {
 
         rtcommInit(0);
 
-        adt7410init();
-
+        try {
+            this.adt7410 = new ADT7410(2, 0);
+        } catch (IOException e) {
+            gracefulExit(0, "Failed to initialize ADT7410", 0);
+        }
+        consumerThread = new Thread(consumerTask);
+        consumerThread.setPriority(Thread.MAX_PRIORITY);
+        consumerThread.start();
         producerThread = new Thread(producerTask);
         producerThread.setPriority(Thread.MAX_PRIORITY);
         producerThread.start();
@@ -219,55 +249,6 @@ public class MainActivity extends Activity {
         });
     }
 
-    int adt7410init() {
-        int status;
-        /* NOTE:
-         * Nowhere in datasheet is specified what value should be written to the
-         * reset register. The value 0x11 is from Sentronis example code.
-         *
-         * ADT7410_REG_RESET = 0x11
-         */
-        status = i2cWrReg(2, 0x48, 0x2f, 0x11);
-
-        if (status < 0) {
-            return (1);
-        }
-
-        /* Set to 16-bit mode
-         * ADT7410_REG_CONFIGURATION = (0x1u << 7u)
-         */
-        status = i2cWrReg(2, 0x48, 0x03, 0x80);
-
-        if (status < 0) {
-            return (1);
-        }
-        return 0;
-    }
-
-    int adt7410ReadTemp() {
-        int data;
-        int [] buf;
-
-        /*
-         * data = ADT7410_REG_STATUS
-         */
-        data = i2cRdReg(2, 0x48, 0x02);
-
-        if ((data & 0x80) == 0x80) {
-            return (-2);
-        }
-
-        /*
-         * buf[0] = ADT7410_REG_TEMP_MSB
-         */
-        buf = i2cRdBuf(2, 0x48, 0x00, 2);
-
-        if (buf == null) {
-            return (-1);
-        }
-
-        return (buf[0] * 256 + buf[1]);
-    }
     /**
      * A native method that is implemented by the 'native-lib' native library,
      * which is packaged with this application.
@@ -292,8 +273,4 @@ public class MainActivity extends Activity {
     public native int samplingRefresh();
     public native int samplingClose();
     public native int rtcommInit(int mode);
-
-    public native int i2cWrReg(int bus_id, int chip_address, int reg, int data);
-    public native int i2cRdReg(int bus_id, int chip_address, int reg);
-    public native int [] i2cRdBuf(int bus_id, int chip_address, int reg, int bufsize);
 }
