@@ -255,4 +255,41 @@
         android:textSize="18dp"
         android:fontFamily="monospace"
         android:layout_alignParentEnd="true" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:height="@dimen/value_height"
+        android:width="@dimen/hdr_column_width"
+        android:text="etemp"
+        android:textAlignment="center"
+        android:textSize="@dimen/hdr_height"
+        android:layout_toStartOf="@+id/aux2_raw"
+        android:layout_below="@+id/aux2_legend" />
+
+    <TextView
+        android:id="@+id/etemp_raw"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/aux2_raw"
+        android:text="-----"
+        android:textAlignment="textEnd"
+        android:textSize="@dimen/value_text_size"
+        android:fontFamily="monospace"
+        android:layout_alignBottom="@+id/textView"
+        android:layout_toStartOf="@+id/aux2_voltage" />
+
+    <TextView
+        android:id="@+id/etemp_final"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/aux2_raw"
+        android:text="-----"
+        android:textAlignment="textEnd"
+        android:textSize="@dimen/value_text_size"
+        android:fontFamily="monospace"
+        android:layout_above="@+id/infos"
+        android:layout_alignEnd="@+id/aux2_voltage" />
 </RelativeLayout>

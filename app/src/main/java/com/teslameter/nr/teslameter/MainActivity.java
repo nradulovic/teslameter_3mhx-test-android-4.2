@@ -21,11 +21,28 @@ public class MainActivity extends Activity {
     private TextView tvZvoltage;
     private TextView tvStats;
     private TextView tvInfos;
+    private TextView tvEtempRaw;
+    private TextView tvEtempFinal;
     private Runnable refrestTask;
-    private Runnable consumerTask;
-    private Thread consumerThread;
+    private Runnable producerTask;
+    private Thread producerThread;
     private boolean shouldExit;
     private AlertDialog alertDialog;
+
+    int xRaw;
+    int yRaw;
+    int zRaw;
+    int aux1Raw;
+    int aux2Raw;
+    int etempRaw;
+    float xVoltage;
+    float yVoltage;
+    float zVoltage;
+    float aux1Voltage;
+    float aux2Voltage;
+    float etempFinal;
+    String stats;
+    String infos;
 
     // Used to load the 'native-lib' library on application startup.
     static {
@@ -49,22 +66,12 @@ public class MainActivity extends Activity {
         tvZvoltage =    (TextView) findViewById(R.id.z_voltage);
         tvStats =       (TextView) findViewById(R.id.stats);
         tvInfos =       (TextView) findViewById(R.id.infos);
+        tvEtempRaw =    (TextView) findViewById(R.id.etemp_raw);
+        tvEtempFinal =  (TextView) findViewById(R.id.etemp_final);
 
         refrestTask = new Runnable() {
             @Override
             public void run() {
-                dataAcquire();
-                int xRaw = dataProbeXRaw();
-                int yRaw = dataProbeYRaw();
-                int zRaw = dataProbeZRaw();
-                int aux1Raw = dataAuxRaw(0);
-                int aux2Raw = dataAuxRaw(1);
-                float xVoltage = dataProbeXVoltage();
-                float yVoltage = dataProbeYVoltage();
-                float zVoltage = dataProbeZVoltage();
-                float aux1Voltage = dataAuxVoltage(0);
-                float aux2Voltage = dataAuxVoltage(1);
-
                 tvXraw.setText(String.format(Locale.getDefault(), "%d",xRaw));
                 tvYraw.setText(String.format(Locale.getDefault(), "%d",yRaw));
                 tvZraw.setText(String.format(Locale.getDefault(), "%d",zRaw));
@@ -77,12 +84,14 @@ public class MainActivity extends Activity {
                 tvAux1Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux1Voltage));
                 tvAux2Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux2Voltage));
 
-                tvStats.setText(dataGetStats());
-                tvInfos.setText(dataGetInfos());
-                dataRelease();
+                tvEtempRaw.setText(String.format(Locale.getDefault(), "%d", etempRaw));
+                tvEtempFinal.setText(String.format(Locale.getDefault(), "%.3f", etempFinal));
+
+                tvStats.setText(stats);
+                tvInfos.setText(infos);
             }
         };
-        consumerTask = new Runnable() {
+        producerTask = new Runnable() {
             @Override
             public void run() {
                 int error;
@@ -100,13 +109,28 @@ public class MainActivity extends Activity {
                 while(!shouldExit) {
                     error = samplingRefresh();
 
-                    if (error == 0) {
-                        runOnUiThread(refrestTask);
-                    } else {
+                    if (error != 0) {
                         shouldExit = true;
                         gracefulExit(0, "Failed to refresh sampling", error);
                         return;
                     }
+                    dataAcquire();
+                    xRaw = dataProbeXRaw();
+                    yRaw = dataProbeYRaw();
+                    zRaw = dataProbeZRaw();
+                    aux1Raw = dataAuxRaw(0);
+                    aux2Raw = dataAuxRaw(1);
+                    xVoltage = dataProbeXVoltage();
+                    yVoltage = dataProbeYVoltage();
+                    zVoltage = dataProbeZVoltage();
+                    aux1Voltage = dataAuxVoltage(0);
+                    aux2Voltage = dataAuxVoltage(1);
+                    stats = dataGetStats();
+                    infos = dataGetInfos();
+                    dataRelease();
+                    etempRaw = adt7410ReadTemp();
+                    etempFinal = (float)(etempRaw * (1.0 / 128.0));
+                    runOnUiThread(refrestTask);
                 }
                 error = samplingClose();
 
@@ -121,9 +145,13 @@ public class MainActivity extends Activity {
 
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
 
-        consumerThread = new Thread(consumerTask);
-        consumerThread.setPriority(Thread.MAX_PRIORITY);
-        consumerThread.start();
+        rtcommInit(0);
+
+        adt7410init();
+
+        producerThread = new Thread(producerTask);
+        producerThread.setPriority(Thread.MAX_PRIORITY);
+        producerThread.start();
     }
 
     @Override
@@ -131,7 +159,7 @@ public class MainActivity extends Activity {
         super.onDestroy();
         shouldExit = true;
         try {
-            consumerThread.join(300);
+            producerThread.join(300);
         } catch (InterruptedException e) {
 
         }
@@ -185,6 +213,71 @@ public class MainActivity extends Activity {
         });
     }
 
+    int adt7410init() {
+        int status;
+        /* NOTE:
+         * Nowhere in datasheet is specified what value should be written to the
+         * reset register. The value 0x11 is from Sentronis example code.
+         *
+         * ADT7410_REG_RESET = 0x11
+         */
+        status = i2cWrReg(2, 0x48, 0x2f, 0x11);
+
+        if (status < 0) {
+            return (1);
+        }
+
+        /*
+         * ADT7410_REG_CONFIGURATION = (0x1u << 7u)
+         */
+        status = i2cWrReg(2, 0x48, 0x03, 0x80);
+
+        if (status < 0) {
+            return (1);
+        }
+        return 0;
+    }
+
+    int adt7410ReadTemp() {
+        int data;
+        int [] buf = new int[2];
+
+        do {
+            /*
+             * data = ADT7410_REG_STATUS
+             */
+            data = i2cRdReg(2, 0x48, 0x02);
+
+            if (data < 0) {
+                return (1);
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+
+            }
+
+        } while ((data & 0x80) == 0x80);
+
+        /*
+         * buf[0] = ADT7410_REG_TEMP_MSB
+         */
+        buf[0] = i2cRdReg(2, 0x48, 0x00);
+
+        if (buf[0] < 0) {
+            return (1);
+        }
+        /*
+         * buf[1] = ADT7410_REG_TEMP_LSB
+         */
+        buf[1] = i2cRdReg(2, 0x48, 0x01);
+
+        if (buf[1] < 0) {
+            return (1);
+        }
+
+        return (buf[0] * 256 + buf[1]);
+    }
     /**
      * A native method that is implemented by the 'native-lib' native library,
      * which is packaged with this application.
@@ -209,4 +302,7 @@ public class MainActivity extends Activity {
     public native int samplingRefresh();
     public native int samplingClose();
     public native int rtcommInit(int mode);
+
+    public native int i2cWrReg(int bus_id, int chip_address, int reg, int data);
+    public native int i2cRdReg(int bus_id, int chip_address, int reg);
 }
