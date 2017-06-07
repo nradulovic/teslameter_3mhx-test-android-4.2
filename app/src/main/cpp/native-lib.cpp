@@ -10,8 +10,11 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <semaphore.h>
 #include <android/log.h>
 #include "teslameter_3mhx-cdi/io.h"
+
+#include "i2c-dev.h"
 #include "rtcomm/rtcomm.h"
 
 /* ---------------------------------------------------------------------------------------------- *
@@ -481,4 +484,120 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingClose(
 }
 
 
+extern "C"
+jint
+Java_com_teslameter_nr_teslameter_MainActivity_i2cWrReg(JNIEnv *env,
+                                                        jobject /* this */,
+                                                        jint bus_id, jint chip_address, jint reg,
+                                                        jint data)
+{
+    char                        buff[100];
+    int                         fd;
+    ssize_t                     status;
+    char                        _reg;
+    char                        _data;
 
+    if (chip_address > 255) {
+        return (-1);
+    }
+
+    if (reg > 255) {
+        return (-1);
+    }
+    _reg = (uint8_t)reg;
+
+    if (data > 255) {
+        return (-1);
+    }
+    _data = (uint8_t)data;
+
+    snprintf(buff, sizeof(buff), "/dev/i2c-%d", bus_id);
+
+    fd = open(buff, O_RDWR);
+
+    if (fd < 0) {
+        if (errno == ENOENT) {
+            return (-1);
+        } else {
+            return (-2);
+        }
+    }
+
+    if (ioctl(fd, I2C_SLAVE, chip_address) < 0) {
+        close(fd);
+
+        return (-2);
+    }
+
+    status = write(fd, &_reg, 1);
+
+    if (status != 1) {
+        return (-3);
+    }
+
+    status = write(fd, &_data, 1);
+
+    if (status != 1) {
+        return (-3);
+    }
+    close(fd);
+
+    return (0);
+}
+
+extern "C"
+jint
+Java_com_teslameter_nr_teslameter_MainActivity_i2cRdReg(JNIEnv *env,
+                                                        jobject /* this */,
+                                                        jint bus_id, jint chip_address, jint reg)
+{
+    char                        buff[100];
+    int                         fd;
+    ssize_t                     status;
+    char                        _reg;
+    char                        _data;
+    uint8_t *                   retval;
+
+    if (chip_address > 255) {
+        return (-1);
+    }
+
+    if (reg > 255) {
+        return (-1);
+    }
+    _reg = (uint8_t)reg;
+
+    snprintf(buff, sizeof(buff), "/dev/i2c-%d", bus_id);
+
+    fd = open(buff, O_RDWR);
+
+    if (fd < 0) {
+        if (errno == ENOENT) {
+            return (-1);
+        } else {
+            return (-2);
+        }
+    }
+
+    if (ioctl(fd, I2C_SLAVE, chip_address) < 0) {
+        close(fd);
+
+        return (-2);
+    }
+
+    status = write(fd, &_reg, 1);
+
+    if (status != 1) {
+        return (-3);
+    }
+
+    status = read(fd, &_data, 1);
+
+    if (status != 1) {
+        return (-3);
+    }
+    close(fd);
+    retval = (uint8_t *)&_data;
+
+    return ((jint)*retval);
+}
