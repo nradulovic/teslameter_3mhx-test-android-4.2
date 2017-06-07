@@ -24,6 +24,7 @@ public class MainActivity extends Activity {
     private Runnable refrestTask;
     private Runnable consumerTask;
     private Thread consumerThread;
+    private boolean shouldExit;
     private AlertDialog alertDialog;
 
     // Used to load the 'native-lib' library on application startup.
@@ -52,36 +53,35 @@ public class MainActivity extends Activity {
         refrestTask = new Runnable() {
             @Override
             public void run() {
-                while (dataAcquire()) {
-                    int xRaw = dataProbeXRaw();
-                    int yRaw = dataProbeYRaw();
-                    int zRaw = dataProbeZRaw();
-                    int aux1Raw = dataAuxRaw(0);
-                    int aux2Raw = dataAuxRaw(1);
-                    float xVoltage = dataProbeXVoltage();
-                    float yVoltage = dataProbeYVoltage();
-                    float zVoltage = dataProbeZVoltage();
-                    float aux1Voltage = dataAuxVoltage(0);
-                    float aux2Voltage = dataAuxVoltage(1);
-                    String stats = dataGetStats();
-                    String infos = dataGetInfos();
-                    dataRelease();
+                dataAcquire();
+                int xRaw = dataProbeXRaw();
+                int yRaw = dataProbeYRaw();
+                int zRaw = dataProbeZRaw();
+                int aux1Raw = dataAuxRaw(0);
+                int aux2Raw = dataAuxRaw(1);
+                float xVoltage = dataProbeXVoltage();
+                float yVoltage = dataProbeYVoltage();
+                float zVoltage = dataProbeZVoltage();
+                float aux1Voltage = dataAuxVoltage(0);
+                float aux2Voltage = dataAuxVoltage(1);
+                String stats = dataGetStats();
+                String infos = dataGetInfos();
+                dataRelease();
 
-                    tvXraw.setText(String.format(Locale.getDefault(), "%d",xRaw));
-                    tvYraw.setText(String.format(Locale.getDefault(), "%d",yRaw));
-                    tvZraw.setText(String.format(Locale.getDefault(), "%d",zRaw));
-                    tvAux1raw.setText(String.format(Locale.getDefault(), "%d", aux1Raw));
-                    tvAux2raw.setText(String.format(Locale.getDefault(), "%d", aux2Raw));
+                tvXraw.setText(String.format(Locale.getDefault(), "%d",xRaw));
+                tvYraw.setText(String.format(Locale.getDefault(), "%d",yRaw));
+                tvZraw.setText(String.format(Locale.getDefault(), "%d",zRaw));
+                tvAux1raw.setText(String.format(Locale.getDefault(), "%d", aux1Raw));
+                tvAux2raw.setText(String.format(Locale.getDefault(), "%d", aux2Raw));
 
-                    tvXvoltage.setText(String.format(Locale.getDefault(), "%.3f", xVoltage));
-                    tvYvoltage.setText(String.format(Locale.getDefault(), "%.3f", yVoltage));
-                    tvZvoltage.setText(String.format(Locale.getDefault(), "%.3f", zVoltage));
-                    tvAux1Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux1Voltage));
-                    tvAux2Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux2Voltage));
+                tvXvoltage.setText(String.format(Locale.getDefault(), "%.3f", xVoltage));
+                tvYvoltage.setText(String.format(Locale.getDefault(), "%.3f", yVoltage));
+                tvZvoltage.setText(String.format(Locale.getDefault(), "%.3f", zVoltage));
+                tvAux1Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux1Voltage));
+                tvAux2Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux2Voltage));
 
-                    tvStats.setText(stats);
-                    tvInfos.setText(infos);
-                }
+                tvStats.setText(stats);
+                tvInfos.setText(infos);
             }
         };
         consumerTask = new Runnable() {
@@ -93,27 +93,33 @@ public class MainActivity extends Activity {
 
                 error = samplingOpen();
 
-                if (error == 0) {
-                    runOnUiThread(refrestTask);
-                } else {
+                if (error != 0) {
+                    shouldExit = true;
                     gracefulExit(0, "Failed to open sampling", error);;
                     return;
                 }
-                error = samplingRefresh();
 
-                if (error != 0) {
-                    samplingClose();
-                    gracefulExit(0, "Failed to refresh sampling", error);
-                    return;
+                while(!shouldExit) {
+                    error = samplingRefresh();
+
+                    if (error == 0) {
+                        runOnUiThread(refrestTask);
+                    } else {
+                        shouldExit = true;
+                        gracefulExit(0, "Failed to refresh sampling", error);
+                        return;
+                    }
                 }
                 error = samplingClose();
 
                 if (error != 0) {
+                    shouldExit = true;
                     gracefulExit(0, "Failed to close sampling", error);
                     return;
                 }
             }
         };
+        shouldExit = false;
 
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
 
@@ -125,7 +131,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        samplingClose();
+        shouldExit = true;
         try {
             consumerThread.join(300);
         } catch (InterruptedException e) {
@@ -198,7 +204,7 @@ public class MainActivity extends Activity {
     public native String dataGetStats();
     public native String dataGetInfos();
 
-    public native boolean dataAcquire();
+    public native void dataAcquire();
     public native void dataRelease();
 
     public native int samplingOpen();
