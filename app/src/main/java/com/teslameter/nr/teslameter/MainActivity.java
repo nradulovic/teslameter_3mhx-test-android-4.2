@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
     int zRaw;
     int aux1Raw;
     int aux2Raw;
-    int etempRaw;
+    int etempRaw = 0;
     float xVoltage;
     float yVoltage;
     float zVoltage;
@@ -107,6 +107,7 @@ public class MainActivity extends Activity {
                 }
 
                 while(!shouldExit) {
+                    int status;
                     error = samplingRefresh();
 
                     if (error != 0) {
@@ -128,7 +129,12 @@ public class MainActivity extends Activity {
                     stats = dataGetStats();
                     infos = dataGetInfos();
                     dataRelease();
-                    etempRaw = adt7410ReadTemp();
+                    status = adt7410ReadTemp();
+
+                    if (status > 0) {
+                        etempRaw = status;
+                    }
+
                     etempFinal = (float)(etempRaw * (1.0 / 128.0));
                     runOnUiThread(refrestTask);
                 }
@@ -227,7 +233,7 @@ public class MainActivity extends Activity {
             return (1);
         }
 
-        /*
+        /* Set to 16-bit mode
          * ADT7410_REG_CONFIGURATION = (0x1u << 7u)
          */
         status = i2cWrReg(2, 0x48, 0x03, 0x80);
@@ -240,40 +246,24 @@ public class MainActivity extends Activity {
 
     int adt7410ReadTemp() {
         int data;
-        int [] buf = new int[2];
+        int [] buf;
 
-        do {
-            /*
-             * data = ADT7410_REG_STATUS
-             */
-            data = i2cRdReg(2, 0x48, 0x02);
+        /*
+         * data = ADT7410_REG_STATUS
+         */
+        data = i2cRdReg(2, 0x48, 0x02);
 
-            if (data < 0) {
-                return (1);
-            }
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-
-            }
-
-        } while ((data & 0x80) == 0x80);
+        if ((data & 0x80) == 0x80) {
+            return (-2);
+        }
 
         /*
          * buf[0] = ADT7410_REG_TEMP_MSB
          */
-        buf[0] = i2cRdReg(2, 0x48, 0x00);
+        buf = i2cRdBuf(2, 0x48, 0x00, 2);
 
-        if (buf[0] < 0) {
-            return (1);
-        }
-        /*
-         * buf[1] = ADT7410_REG_TEMP_LSB
-         */
-        buf[1] = i2cRdReg(2, 0x48, 0x01);
-
-        if (buf[1] < 0) {
-            return (1);
+        if (buf == null) {
+            return (-1);
         }
 
         return (buf[0] * 256 + buf[1]);
@@ -305,4 +295,5 @@ public class MainActivity extends Activity {
 
     public native int i2cWrReg(int bus_id, int chip_address, int reg, int data);
     public native int i2cRdReg(int bus_id, int chip_address, int reg);
+    public native int [] i2cRdBuf(int bus_id, int chip_address, int reg, int bufsize);
 }
