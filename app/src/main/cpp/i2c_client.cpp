@@ -12,7 +12,7 @@
 
 extern "C"
 jint
-Java_com_teslameter_nr_teslameter_I2cClient_i2cWrReg(JNIEnv *env,
+Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrReg(JNIEnv *env,
                                                         jobject /* this */,
                                                         jint bus_id, jint chip_address, jint reg,
                                                         jint data)
@@ -76,7 +76,7 @@ Java_com_teslameter_nr_teslameter_I2cClient_i2cWrReg(JNIEnv *env,
 
 extern "C"
 jint
-Java_com_teslameter_nr_teslameter_I2cClient_i2cRdReg(JNIEnv *env,
+Java_com_teslameter_nr_teslameter_I2cSlave_i2cRdReg(JNIEnv *env,
                                                         jobject /* this */,
                                                         jint bus_id, jint chip_address, jint reg)
 {
@@ -135,7 +135,7 @@ Java_com_teslameter_nr_teslameter_I2cClient_i2cRdReg(JNIEnv *env,
 
 extern "C"
 jintArray
-Java_com_teslameter_nr_teslameter_I2cClient_i2cRdBuf(JNIEnv *env,
+Java_com_teslameter_nr_teslameter_I2cSlave_i2cRdBuf(JNIEnv *env,
                                                         jobject /* this */,
                                                         jint bus_id, jint chip_address, jint reg,
                                                         jint bufsize)

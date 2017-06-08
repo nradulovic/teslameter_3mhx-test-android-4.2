@@ -7,7 +7,7 @@ import java.util.Locale;
  * Created by nenad on 6/7/17.
  */
 
-public class I2cClient {
+class I2cSlave {
     /* JNI stuff */
     private native int i2cWrReg(int bus_id, int chip_address, int reg, int data);
     private native int i2cRdReg(int bus_id, int chip_address, int reg);
@@ -26,12 +26,12 @@ public class I2cClient {
     }
 
     /* Public methods */
-    I2cClient(int bus_id, int chip_id) {
+    I2cSlave(int bus_id, int chip_id) {
         this.bus_id = bus_id;
         this.chip_id = chip_id;
     }
 
-    public void i2cWriteReg(int reg, int data) throws IOException {
+    void writeReg(int reg, int data) throws IOException {
         this.assert_arg_reg(reg);
 
         if ((data < 0) || (data > 255)) {
@@ -47,7 +47,7 @@ public class I2cClient {
         }
     }
 
-    public int i2cReadReg(int reg) throws IOException {
+    int readReg(int reg) throws IOException {
         this.assert_arg_reg(reg);
 
         int retval = this.i2cRdReg(this.bus_id, this.chip_id, reg);
@@ -60,17 +60,17 @@ public class I2cClient {
         return retval;
     }
 
-    public int [] i2cReadBuf(int reg, int bufsize) throws IOException {
+    int [] readBuf(int reg, int bufsize) throws IOException {
         this.assert_arg_reg(reg);
 
         int [] retval = this.i2cRdBuf(this.bus_id, this.chip_id, reg, bufsize);
 
         if (retval == null) {
             throw new IOException(String.format(Locale.getDefault(),
-                    "Failed to write to register %d: error: no memory"));
+                    "Failed to write to register %d: error: no memory", reg));
         } else if (retval[0] < 0) {
             throw new IOException(String.format(Locale.getDefault(),
-                    "Failed to write to register %d: error %d", retval[0]));
+                    "Failed to write to register %d: error %d", reg, retval[0]));
         }
         return retval;
     }
