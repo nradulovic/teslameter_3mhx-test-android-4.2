@@ -60,7 +60,6 @@ final class CdiManager {
             new ParamKey("int",   "vgain3lo",         1),
             new ParamKey("int",   "tgain4lo",         1),
             new ParamKey("int",   "vgain4lo",         1),
-            new ParamKey("int",   "gainlvl1",         1),
             new ParamKey("int",   "gainlvl1",         1000),
             new ParamKey("int",   "gainlvl2",         1000),
             new ParamKey("int",   "gainlvl3",         1000),
