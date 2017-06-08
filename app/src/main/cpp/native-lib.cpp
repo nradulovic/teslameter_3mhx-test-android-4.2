@@ -264,7 +264,7 @@ EXPORT_JNI_FUNC(jfloat, dataProbeZVoltage) (JNIEnv *env, jobject this_obj)
 
     struct rtcomm_ctx *         ctx = &g_ctx;
 
-    return (get_probe_x_raw(ctx, IO_CHANNEL_Z) * VQUANT_MV);
+    return ((float)(get_probe_x_raw(ctx, IO_CHANNEL_Z) * VQUANT_MV));
 }
 
 EXPORT_JNI_FUNC(jfloat, dataAuxVoltage) (JNIEnv *env, jobject this_obj, jint mchannel)
@@ -274,7 +274,7 @@ EXPORT_JNI_FUNC(jfloat, dataAuxVoltage) (JNIEnv *env, jobject this_obj, jint mch
     (void)env;
     (void)this_obj;
 
-    return (get_aux_raw(ctx, mchannel) * VQUANT_MV);
+    return ((float)(get_aux_raw(ctx, mchannel) * VQUANT_MV));
 }
 
 
