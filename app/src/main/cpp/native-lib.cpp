@@ -1,23 +1,41 @@
-
+/*
+ *  teslameter_3mhx-android - 2017
+ *
+ *  native-lib.cpp
+ *
+ *  Created on: Jun 8, 2017
+ * ------------------------------------------------------------------------------------------------
+ *  This file is part of teslameter_3mhx-android.
+ *
+ *  teslameter_3mhx-android is free software: you can redistribute it and/or modify
+ *  it under the terms of the Lesser GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  teslameter_3mhx-android is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with teslameter_3mhx-android.  If not, see <http://www.gnu.org/licenses/>.
+ * ------------------------------------------------------------------------------------------ *//**
+ * @file
+ * @author      Nenad Radulovic
+ * @brief       Java Native Interface
+ *****************************************************************************************//** @{ */
 /*=============================================================================  INCLUDE FILES  ==*/
 
 #include <jni.h>
 #include <time.h>
 #include <stdio.h>
 #include <errno.h>
-#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/types.h>
 #include <sys/ioctl.h>
-#include <semaphore.h>
 #include <android/log.h>
 #include "teslameter_3mhx-cdi/io.h"
 
-#include "i2c-dev.h"
 #include "rtcomm/rtcomm.h"
 
 /*=============================================================================  LOCAL MACRO's  ==*/
@@ -31,6 +49,8 @@
   ((void)__android_log_print(ANDROID_LOG_WARN, kTAG, __VA_ARGS__))
 #define LOGE(...) \
   ((void)__android_log_print(ANDROID_LOG_ERROR, kTAG, __VA_ARGS__))
+
+#define EXPORT_JNI_FUNC(rettype, name)           extern "C" rettype Java_com_teslameter_nr_teslameter_MainActivity_ ## name
 
 /*==========================================================================  LOCAL DATA TYPES  ==*/
 
@@ -52,6 +72,10 @@ struct rtcomm_ctx
         }                           raw;
         uint32_t                    no_samples;
     }                           pp_buffer;
+    struct sysinfo
+    {
+        char                        drv_version[20];
+    }                           sysinfo;
 };
 
 /*=================================================================  LOCAL FUNCTION PROTOTYPES  ==*/
@@ -61,10 +85,8 @@ static const char*              kTAG = "rtcomm-jni";
 
 static struct rtcomm_ctx        g_ctx;
 
-
-/* ---------------------------------------------------------------------------------------------- *
- * Private methods
- * ---------------------------------------------------------------------------------------------- */
+/*==========================================================================  GLOBAL VARIABLES  ==*/
+/*================================================================  LOCAL FUNCTION DEFINITIONS  ==*/
 
 static int io_buffer_get_no_samples(struct io_buffer * buffer)
 {
@@ -150,125 +172,117 @@ static int32_t get_probe_x_raw(struct rtcomm_ctx * ctx, uint32_t channel)
 }
 
 
-/* ---------------------------------------------------------------------------------------------- *
- * Public methods
- * ---------------------------------------------------------------------------------------------- */
+/*===============================================================  GLOBAL FUNCTION DEFINITIONS  ==*/
 
 /* -- Initialization ---------------------------------------------------------------------------- */
 
-extern "C" jint
-Java_com_teslameter_nr_teslameter_MainActivity_rtcommInit(
-        JNIEnv *env,
-        jobject /* this */,
-        jintArray config_array) {
-    struct rtcomm_ctx *         ctx = &g_ctx;
+EXPORT_JNI_FUNC(jint, rtcommInit) (JNIEnv *env, jobject this_obj, jintArray config_array) {
+    (void)env;
+    (void)this_obj;
 
     return (0);
 }
 
-
 /* -- DATA access methods ----------------------------------------------------------------------- */
-extern "C"
-void
-Java_com_teslameter_nr_teslameter_MainActivity_dataAcquire(JNIEnv *env, jobject this_obj) {
+
+EXPORT_JNI_FUNC(void, dataAcquire) (JNIEnv *env, jobject this_obj)
+{
     (void)env;
     (void)this_obj;
 }
 
-extern "C"
-void
-Java_com_teslameter_nr_teslameter_MainActivity_dataRelease(JNIEnv *env, jobject this_obj) {
+EXPORT_JNI_FUNC(void, dataRelease) (JNIEnv *env, jobject this_obj)
+{
+    (void)env;
+    (void)this_obj;
 }
 
-extern "C"
-jint
-Java_com_teslameter_nr_teslameter_MainActivity_dataProbeXRaw(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jint, dataProbeXRaw) (JNIEnv *env, jobject this_obj)
+{
+    (void)env;
+    (void)this_obj;
+
     struct rtcomm_ctx *         ctx = &g_ctx;
 
     return (get_probe_x_raw(ctx, IO_CHANNEL_X));
 }
 
-extern "C"
-jint
-Java_com_teslameter_nr_teslameter_MainActivity_dataProbeYRaw(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jint, dataProbeYRaw) (JNIEnv *env, jobject this_obj)
+{
+    (void)env;
+    (void)this_obj;
+
     struct rtcomm_ctx *         ctx = &g_ctx;
 
     return (get_probe_x_raw(ctx, IO_CHANNEL_Y));
 }
 
-extern "C"
-jint
-Java_com_teslameter_nr_teslameter_MainActivity_dataProbeZRaw(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jint, dataProbeZRaw) (JNIEnv *env, jobject this_obj)
+{
+    (void)env;
+    (void)this_obj;
+
     struct rtcomm_ctx *         ctx = &g_ctx;
 
     return (get_probe_x_raw(ctx, IO_CHANNEL_Z));
 }
 
-extern "C"
-jint
-Java_com_teslameter_nr_teslameter_MainActivity_dataAuxRaw(
-        JNIEnv *env,
-        jobject /* this */,
-        jint mchannel) {
+EXPORT_JNI_FUNC(jint, dataAuxRaw) (JNIEnv *env, jobject this_obj, jint mchannel)
+{
+    (void)env;
+    (void)this_obj;
+
     struct rtcomm_ctx *         ctx = &g_ctx;
 
     return (get_aux_raw(ctx, mchannel));
 }
 
-extern "C"
-jfloat
-Java_com_teslameter_nr_teslameter_MainActivity_dataProbeXVoltage(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jfloat, dataProbeXVoltage) (JNIEnv *env, jobject this_obj)
+{
+    (void)env;
+    (void)this_obj;
+
     struct rtcomm_ctx *         ctx = &g_ctx;
 
-    return (get_probe_x_raw(ctx, IO_CHANNEL_X) * VQUANT_MV);
+    return ((float)(get_probe_x_raw(ctx, IO_CHANNEL_X) * VQUANT_MV));
 }
 
-extern "C"
-jfloat
-Java_com_teslameter_nr_teslameter_MainActivity_dataProbeYVoltage(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jfloat, dataProbeYVoltage) (JNIEnv *env, jobject this_obj)
+{
+    (void)env;
+    (void)this_obj;
+
     struct rtcomm_ctx *         ctx = &g_ctx;
 
-    return (get_probe_x_raw(ctx, IO_CHANNEL_Y) * VQUANT_MV);
+    return ((float)(get_probe_x_raw(ctx, IO_CHANNEL_Y) * VQUANT_MV));
 }
 
-extern "C"
-jfloat
-Java_com_teslameter_nr_teslameter_MainActivity_dataProbeZVoltage(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jfloat, dataProbeZVoltage) (JNIEnv *env, jobject this_obj)
+{
+    (void)env;
+    (void)this_obj;
+
     struct rtcomm_ctx *         ctx = &g_ctx;
 
     return (get_probe_x_raw(ctx, IO_CHANNEL_Z) * VQUANT_MV);
 }
 
-extern "C"
-jfloat
-Java_com_teslameter_nr_teslameter_MainActivity_dataAuxVoltage(
-        JNIEnv *env,
-        jobject /* this */,
-        jint mchannel) {
+EXPORT_JNI_FUNC(jfloat, dataAuxVoltage) (JNIEnv *env, jobject this_obj, jint mchannel)
+{
     struct rtcomm_ctx *         ctx = &g_ctx;
+
+    (void)env;
+    (void)this_obj;
 
     return (get_aux_raw(ctx, mchannel) * VQUANT_MV);
 }
 
-extern "C"
-jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataGetStats(
-        JNIEnv *env,
-        jobject /* this */) {
+
+EXPORT_JNI_FUNC(jstring, dataGetStats) (JNIEnv *env, jobject this_obj)
+{
     struct rtcomm_ctx *         ctx = &g_ctx;
-    static char buffer[300];
+    static char                 buffer[300];
+    (void)this_obj;
 
     snprintf(buffer, sizeof(buffer), "te%d,rcf%d,cce%d,cde%d,ae%d,nre%d,rse%d,rte%d,rce%d",
             ctx->io_buffer.stats.total_errors,
@@ -284,11 +298,8 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetStats(
     return env->NewStringUTF(buffer);
 }
 
-extern "C"
-jstring
-Java_com_teslameter_nr_teslameter_MainActivity_dataGetInfos(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jstring, dataGetInfos) (JNIEnv *env, jobject this_obj)
+{
     struct rtcomm_ctx *         ctx = &g_ctx;
     static char buffer[300];
     static uint32_t             header_invalid_count;
@@ -297,6 +308,8 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetInfos(
     uint32_t                    frame = 0;
     bool                        is_valid_footer = false;
     bool                        is_valid_header = false;
+
+    (void)this_obj;
 
     if (rtcomm_header_unpack(&ctx->io_buffer.header, &data_size, &frame)) {
         is_valid_header = true;
@@ -316,109 +329,103 @@ Java_com_teslameter_nr_teslameter_MainActivity_dataGetInfos(
 
 /* -- Sampling control -------------------------------------------------------------------------- */
 
-extern "C"
-jint
-Java_com_teslameter_nr_teslameter_MainActivity_samplingOpen(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jint, samplingOpen) (JNIEnv *env, jobject this_obj)
+{
     struct rtcomm_ctx *         ctx = &g_ctx;
-    char version[20];
-    int buffer_size = sizeof(ctx->io_buffer);
-
-    if (ctx->mode == RTCOMM_JNI_MODE_SIMULATION) {
-        return (0);
-    }
+    int                         buffer_size = sizeof(ctx->io_buffer);
+    int                         err;
+    (void)env;
+    (void)this_obj;
 
     ctx->driver_fd = open("/dev/" RTCOMM_NAME, O_RDONLY);
 
     if (ctx->driver_fd == -1) {
         LOGE("Failed to open driver: %d\n", errno);
 
-        return (1);
+        goto FAILURE_EXIT;
     } else {
         LOGI("Opened /dev/" RTCOMM_NAME "\n");
     }
 
-    if (ioctl(ctx->driver_fd, RTCOMM_GET_VERSION, version) == -1) {
+    if (ioctl(ctx->driver_fd, RTCOMM_GET_VERSION, &ctx->sysinfo.drv_version[0]) == -1) {
         LOGE("RTCOMM_GET_VERSION failed: %d\n", errno);
 
-        return (1);
+        goto FAILURE_EXIT;
     } else {
-        LOGI("RTCOMM_GET_VERSION get: %s\n", version);
+        LOGI("RTCOMM_GET_VERSION get: %s\n", ctx->sysinfo.drv_version);
     }
 
     if (ioctl(ctx->driver_fd, RTCOMM_SET_SIZE, &buffer_size) == -1) {
         LOGE("RTCOMM_SET_SIZE failed: %d\n", errno);
 
-        return (1);
+        goto FAILURE_EXIT;
     } else {
         LOGI("RTCOMM_SET_SIZE set: %d\n", buffer_size);
     }
 
-    if (ioctl(ctx->driver_fd, RTCOMM_INIT)) {
+    if (ioctl(ctx->driver_fd, RTCOMM_INIT) == -1) {
         LOGE("RTCOMM_INIT failed: %d\n", errno);
 
-        return (1);
+        goto FAILURE_EXIT;
     } else {
         LOGI("RTCOMM_INIT success.\n");
     }
 
-    if (ioctl(ctx->driver_fd, RTCOMM_START)) {
+    if (ioctl(ctx->driver_fd, RTCOMM_START) == -1) {
         LOGE("RTCOMM_START failed: %d\n", errno);
 
-        return (1);
+        goto FAILURE_EXIT;
     } else {
         LOGI("RTCOMM_START success.\n");
     }
 
     return (0);
+FAILURE_EXIT:
+    err = errno;
+
+    if (ctx->driver_fd != -1) {
+        close(ctx->driver_fd);
+    }
+
+    return (err);
 }
 
-extern "C"
-jint
-Java_com_teslameter_nr_teslameter_MainActivity_samplingRefresh(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jint, samplingRefresh) (JNIEnv *env, jobject this_obj)
+{
     struct rtcomm_ctx *         ctx = &g_ctx;
-    int             ret;
-
-    if (ctx->mode == RTCOMM_JNI_MODE_SIMULATION) {
-        struct timespec tm;
-
-        tm.tv_sec = 0;
-        tm.tv_nsec = 100000000l;
-
-        nanosleep(&tm, NULL);
-        return (0);
-    }
+    int                         ret;
+    (void)env;
+    (void)this_obj;
 
     ret = read(ctx->driver_fd, &ctx->io_buffer, sizeof(ctx->io_buffer));
 
     if (ret != sizeof(ctx->io_buffer)) {
         if (ret == -1) {
             LOGE("Failed to read, error: %d\n", errno);
-        } else {
-            LOGE("Failed to read %d bytes, error: %d\n", sizeof(ctx->io_buffer), ret);
-        }
 
-        return (1);
+            return (errno);
+        } else {
+            LOGE("Failed to read %d bytes\n", sizeof(ctx->io_buffer));
+
+            return (ECANCELED);
+        }
     }
     post_process(ctx);
 
     return (0);
 }
 
-extern "C"
-jint
-Java_com_teslameter_nr_teslameter_MainActivity_samplingClose(
-        JNIEnv *env,
-        jobject /* this */) {
+EXPORT_JNI_FUNC(jint, samplingClose) (JNIEnv *env, jobject this_obj)
+{
     struct rtcomm_ctx *         ctx = &g_ctx;
+    int                         err;
+    (void)env;
+    (void)this_obj;
 
     if (ioctl(ctx->driver_fd, RTCOMM_STOP)) {
         LOGE("RTCOMM_STOP failed: %d\n", errno);
 
-        return (1);
+        goto FAILURE_EXIT;
     } else {
         LOGI("RTCOMM_STOP success.\n");
     }
@@ -426,11 +433,22 @@ Java_com_teslameter_nr_teslameter_MainActivity_samplingClose(
     if (ioctl(ctx->driver_fd, RTCOMM_TERM)) {
         LOGE("RTCOMM_TERM failed: %d\n", errno);
 
-        return (1);
+        goto FAILURE_EXIT;
     } else {
         LOGI("RTCOMM_TERM success.\n");
     }
-    close(ctx->driver_fd);
+
 
     return (0);
+FAILURE_EXIT:
+    err = errno;
+
+    close(ctx->driver_fd);
+
+    return (err);
 }
+
+/*====================================================*//** @cond *//*==  CONFIGURATION ERRORS  ==*/
+/** @endcond *//** @} *//**************************************************************************
+ * END of native-lib.cpp
+ **************************************************************************************************/
