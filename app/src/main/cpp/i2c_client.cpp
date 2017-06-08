@@ -237,6 +237,7 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrBuf(JNIEnv *env,
                                                     jint bus_id, jint chip_address, jint reg,
                                                     jintArray buf)
 {
+#if 0
     char                        device_name[100];
     int                         fd;
     ssize_t                     status;
@@ -325,4 +326,6 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrBuf(JNIEnv *env,
         free(jint_buffer);
     }
     return (retval);
+#endif
+    return (NULL);
 }
