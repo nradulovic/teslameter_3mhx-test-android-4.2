@@ -229,3 +229,100 @@ FAILURE_EXIT:
     }
     return (retval);
 }
+
+extern "C"
+jintArray
+Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrBuf(JNIEnv *env,
+                                                    jobject /* this */,
+                                                    jint bus_id, jint chip_address, jint reg,
+                                                    jintArray buf)
+{
+    char                        device_name[100];
+    int                         fd;
+    ssize_t                     status;
+    char                        _reg;
+    uint8_t *                   byte_buffer = NULL;
+    jint *                      jint_buffer = NULL;
+    int                         err;
+    jintArray                   retval;
+
+    snprintf(device_name, sizeof(device_name), "/dev/i2c-%d", bus_id);
+
+    byte_buffer = (uint8_t  *)malloc(bufsize);
+
+    if (!byte_buffer) {
+        err = ENOBUFS;
+        goto FAILURE_EXIT;
+    }
+
+    jint_buffer = (jint *)malloc(sizeof(jint) * bufsize);
+
+    fd = open(device_name, O_RDWR);
+
+    if (fd < 0) {
+        err = errno;
+        goto FAILURE_EXIT;
+    }
+    status = ioctl(fd, I2C_SLAVE, chip_address);
+
+    if (status < 0) {
+        err = errno;
+        close(fd);
+        goto FAILURE_EXIT;
+    }
+    _reg = (uint8_t)reg;
+    status = write(fd, &_reg, 1);
+
+    if (status != 1) {
+        if (status < 0) {
+            err = errno;
+        } else {
+            err = EAGAIN;
+        }
+        close(fd);
+        goto FAILURE_EXIT;
+    }
+
+    status = read(fd, byte_buffer, bufsize);
+
+    if (status != bufsize) {
+        if (status < 0) {
+            err = errno;
+        } else {
+            err = EAGAIN;
+        }
+        close(fd);
+        goto FAILURE_EXIT;
+    }
+    close(fd);
+
+    for (int idx = 0; idx < bufsize; idx++) {
+        jint_buffer[idx] = byte_buffer[idx];
+    }
+
+    retval = env->NewIntArray(bufsize);
+
+    if (retval != NULL) {
+        env->SetIntArrayRegion(retval, 0, bufsize, jint_buffer);
+    }
+    free(byte_buffer);
+    free(jint_buffer);
+
+    return (retval);
+    FAILURE_EXIT:
+    jint_buffer[0] = err;
+    retval = env->NewIntArray(1);
+
+    if (retval != NULL) {
+        env->SetIntArrayRegion(retval, 0, 1, jint_buffer);
+    }
+
+    if (byte_buffer) {
+        free(byte_buffer);
+    }
+
+    if (jint_buffer) {
+        free(jint_buffer);
+    }
+    return (retval);
+}

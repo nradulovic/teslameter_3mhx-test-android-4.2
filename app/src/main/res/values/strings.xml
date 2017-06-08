@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Teslameter</string>
+    <string name="title_activity_hello">Hello</string>
 </resources>

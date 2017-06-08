@@ -3,7 +3,9 @@ package com.teslameter.nr.teslameter;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.TextView;
 
 import java.io.IOException;
@@ -49,6 +51,7 @@ public class MainActivity extends Activity {
     float etempFinal;
     String stats;
     String infos;
+    TextView hdr_channel;
 
     // Used to load the 'native-lib' library on application startup.
     static {
@@ -74,6 +77,16 @@ public class MainActivity extends Activity {
         tvInfos =       (TextView) findViewById(R.id.infos);
         tvEtempRaw =    (TextView) findViewById(R.id.etemp_raw);
         tvEtempFinal =  (TextView) findViewById(R.id.etemp_final);
+
+        hdr_channel =  (TextView) findViewById(R.id.hdr_channel);
+
+        hdr_channel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this,HelloActivity.class);
+                startActivity(intent);
+            }
+        });
         available = new Semaphore(0);
 
         refrestTask = new Runnable() {
