@@ -40,9 +40,34 @@
 
 /*=============================================================================  LOCAL MACRO's  ==*/
 
-#define VREF                            2.5
-#define VQUANT_MV                       (((VREF * 2.0) / (8388608 - 1)) * 1000.0)
+/* ---------------------------------------------------------------------------------------------- *
+ * JNI MACRO HELPER                                                                               *
+ * ---------------------------------------------------------------------------------------------- *
+ *                                                                                                *
+ * Use the macro EXPORT_JNI_PACKAGE to easily define which package this JNI .cpp file belongs to. *
+ *                                                                                                *
+ * ---------------------------------------------------------------------------------------------- */
+
+#define EXPORT_JNI_PACKAGE              Java_com_teslameter_nr_teslameter_MainActivity_
+
+#define EXPORT_JNI_FUNC(rettype, name)                                                              \
+    extern "C" rettype EXPORT_JNI_PACKAGE ## name
+
+
+
+
+/* Compilation/runtime constants
+ * -----------------------------
+ * These constants should be part of initialization process and setup during the runtime, eg. when a
+ * class is instanced. Since we must finish the project in less than 24 hours, then fuck it. Define
+ * the constants here.
+ * */
 #define WINDOW_BUFF_SIZE                800
+#define VREF                            2.5
+
+/* Andoird logger for C
+ * --------------------
+ */
 #define LOGI(...) \
   ((void)__android_log_print(ANDROID_LOG_INFO, kTAG, __VA_ARGS__))
 #define LOGW(...) \
@@ -50,11 +75,16 @@
 #define LOGE(...) \
   ((void)__android_log_print(ANDROID_LOG_ERROR, kTAG, __VA_ARGS__))
 
-#define EXPORT_JNI_FUNC(rettype, name)           extern "C" rettype Java_com_teslameter_nr_teslameter_MainActivity_ ## name
+/* Other macros
+ * ------------
+ */
+#define VQUANT_MV                       (((VREF * 2.0) / (8388608 - 1)) * 1000.0
 
 /*==========================================================================  LOCAL DATA TYPES  ==*/
 
-/* -- RTCOMM-JNI context structure -- */
+/* RTCOMM-JNI context structure
+ * ----------------------------
+ */
 struct rtcomm_ctx
 {
     /* File handle for RTCOMM driver */
@@ -143,7 +173,9 @@ static void post_process(struct rtcomm_ctx * ctx)
         memcpy(&ctx->pp_buffer.raw.probe_window[0][0], &ctx->io_buffer.sample[0][0],
                sizeof(int32_t) * IO_PROBE_CHANNELS * no_samples);
     } else {
-
+        /*
+         * TODO: Resample the buffer to 800 samples
+         */
     }
     /* Save all probe values */
     memcpy(&ctx->pp_buffer.raw.probe_array[0][0], &ctx->io_buffer.sample[0][0],
@@ -176,7 +208,16 @@ static int32_t get_probe_x_raw(struct rtcomm_ctx * ctx, uint32_t channel)
 
 /* -- Initialization ---------------------------------------------------------------------------- */
 
-EXPORT_JNI_FUNC(jint, rtcommInit) (JNIEnv *env, jobject this_obj, jintArray config_array) {
+EXPORT_JNI_FUNC(jint, rtcommInit) (JNIEnv *env, jobject this_obj, jintArray config_array)
+{
+    (void)env;
+    (void)this_obj;
+
+    return (0);
+}
+
+EXPORT_JNI_FUNC(jint, rtcommTerminate) () (JNIEnv *env, jobject this_obj)
+{
     (void)env;
     (void)this_obj;
 
@@ -185,16 +226,20 @@ EXPORT_JNI_FUNC(jint, rtcommInit) (JNIEnv *env, jobject this_obj, jintArray conf
 
 /* -- DATA access methods ----------------------------------------------------------------------- */
 
-EXPORT_JNI_FUNC(void, dataAcquire) (JNIEnv *env, jobject this_obj)
+EXPORT_JNI_FUNC(jint, dataAcquire) (JNIEnv *env, jobject this_obj)
 {
     (void)env;
     (void)this_obj;
+
+    return (0);
 }
 
-EXPORT_JNI_FUNC(void, dataRelease) (JNIEnv *env, jobject this_obj)
+EXPORT_JNI_FUNC(jint, dataRelease) (JNIEnv *env, jobject this_obj)
 {
     (void)env;
     (void)this_obj;
+
+    return (0);
 }
 
 EXPORT_JNI_FUNC(jint, dataProbeXRaw) (JNIEnv *env, jobject this_obj)
