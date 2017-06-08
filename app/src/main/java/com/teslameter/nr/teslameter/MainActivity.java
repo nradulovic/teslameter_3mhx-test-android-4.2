@@ -129,9 +129,11 @@ public class MainActivity extends Activity {
                         val = adt7410.readRawValue();
                     } catch (IOException e) {
                         val = 0;
+                    } catch (IllegalStateException e) {
+                        val = 0;
                     }
                     etempRaw = val;
-                    etempFinal = adt7410.getTemp(etempRaw);
+                    etempFinal = adt7410.calculateTemp(etempRaw);
 
                     runOnUiThread(refrestTask);
                 }
@@ -148,7 +150,7 @@ public class MainActivity extends Activity {
 
                 if (error != 0) {
                     shouldExit = true;
-                    gracefulExit(0, "Failed to open sampling", error);;
+                    gracefulExit(0, "Failed to open sampling", error);
                     return;
                 }
 
@@ -215,7 +217,7 @@ public class MainActivity extends Activity {
                         break;
                     case 1:
                         title = "Warning";
-                        shouldExit = true;
+                        shouldExit = false;
                         break;
                     default:
                         title = "Unknown";
@@ -223,7 +225,7 @@ public class MainActivity extends Activity {
                         break;
                 }
                 alertDialog.setTitle(title);
-                alertDialog.setMessage(String.format("%s : %d", text, status));
+                alertDialog.setMessage(String.format(Locale.getDefault(), "%s : %d", text, status));
 
                 if (shouldExit) {
                     alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Exit",
