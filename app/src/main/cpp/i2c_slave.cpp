@@ -1,21 +1,54 @@
-//
-// Created by nenad on 6/7/17.
-//
+/*
+ *  teslameter_3mhx-android - 2017
+ *
+ *  native-lib.cpp
+ *
+ *  Created on: Jun 8, 2017
+ * ------------------------------------------------------------------------------------------------
+ *  This file is part of teslameter_3mhx-android.
+ *
+ *  teslameter_3mhx-android is free software: you can redistribute it and/or modify
+ *  it under the terms of the Lesser GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  teslameter_3mhx-android is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with teslameter_3mhx-android.  If not, see <http://www.gnu.org/licenses/>.
+ * ------------------------------------------------------------------------------------------ *//**
+ * @file
+ * @author      Nenad Radulovic
+ * @brief       I2C Slave C implementation
+ *****************************************************************************************//** @{ */
+/*=============================================================================  INCLUDE FILES  ==*/
+
 #include <jni.h>
+#include <time.h>
 #include <stdio.h>
-#include <fcntl.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
+#include <android/log.h>
 
 #include "i2c-dev.h"
-#include "i2c_client.h"
+#include "i2c_slave.h"
 
+/*=============================================================================  LOCAL MACRO's  ==*/
+/*==========================================================================  LOCAL DATA TYPES  ==*/
+/*=================================================================  LOCAL FUNCTION PROTOTYPES  ==*/
+/*===========================================================================  LOCAL VARIABLES  ==*/
+/*==========================================================================  GLOBAL VARIABLES  ==*/
+/*================================================================  LOCAL FUNCTION DEFINITIONS  ==*/
+/*===============================================================  GLOBAL FUNCTION DEFINITIONS  ==*/
 
-extern "C"
-jint
-Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrReg(JNIEnv *env,
-                                                        jobject /* this */,
-                                                        jint bus_id, jint chip_address, jint reg,
-                                                        jint data)
+JNI_I2C_SLAVE(jint, i2cWrReg) (JNIEnv *env, jobject this_obj, jint bus_id, jint chip_address,
+                               jint reg, jint data)
 {
     char                        buff[100];
     int                         fd;
@@ -24,6 +57,9 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrReg(JNIEnv *env,
     char                        _data;
     int                         status;
     int                         err;
+
+    (void)env;
+    (void)this_obj;
 
     _reg = (uint8_t)reg;
     _data = (uint8_t)data;
@@ -74,11 +110,8 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrReg(JNIEnv *env,
     return (0);
 }
 
-extern "C"
-jint
-Java_com_teslameter_nr_teslameter_I2cSlave_i2cRdReg(JNIEnv *env,
-                                                        jobject /* this */,
-                                                        jint bus_id, jint chip_address, jint reg)
+JNI_I2C_SLAVE(jint, i2cRdReg) (JNIEnv *env, jobject this_obj, jint bus_id, jint chip_address,
+                               jint reg)
 {
     char                        device_name[100];
     int                         fd;
@@ -87,6 +120,9 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cRdReg(JNIEnv *env,
     char                        _data;
     int                         status;
     int                         err;
+
+    (void)env;
+    (void)this_obj;
 
     snprintf(device_name, sizeof(device_name), "/dev/i2c-%d", bus_id);
 
@@ -133,12 +169,8 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cRdReg(JNIEnv *env,
     return ((jint)*(uint8_t *)&_data);
 }
 
-extern "C"
-jintArray
-Java_com_teslameter_nr_teslameter_I2cSlave_i2cRdBuf(JNIEnv *env,
-                                                        jobject /* this */,
-                                                        jint bus_id, jint chip_address, jint reg,
-                                                        jint bufsize)
+JNI_I2C_SLAVE(jintArray, i2cRdBuf) (JNIEnv *env, jobject this_obj, jint bus_id, jint chip_address,
+                                    jint reg, jint bufsize)
 {
     char                        device_name[100];
     int                         fd;
@@ -148,6 +180,9 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cRdBuf(JNIEnv *env,
     jint *                      jint_buffer = NULL;
     int                         err;
     jintArray                   retval;
+
+    (void)env;
+    (void)this_obj;
 
     snprintf(device_name, sizeof(device_name), "/dev/i2c-%d", bus_id);
 
@@ -159,6 +194,11 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cRdBuf(JNIEnv *env,
     }
 
     jint_buffer = (jint *)malloc(sizeof(jint) * bufsize);
+
+    if (!jint_buffer) {
+        err = ENOBUFS;
+        goto FAILURE_EXIT;
+    }
 
     fd = open(device_name, O_RDWR);
 
@@ -213,7 +253,7 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cRdBuf(JNIEnv *env,
 
     return (retval);
 FAILURE_EXIT:
-    jint_buffer[0] = err;
+    jint_buffer[0] = err * 256;
     retval = env->NewIntArray(1);
 
     if (retval != NULL) {
@@ -230,14 +270,9 @@ FAILURE_EXIT:
     return (retval);
 }
 
-extern "C"
-jintArray
-Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrBuf(JNIEnv *env,
-                                                    jobject /* this */,
-                                                    jint bus_id, jint chip_address, jint reg,
-                                                    jintArray buf)
+JNI_I2C_SLAVE(jint, i2cWrBuf) (JNIEnv *env, jobject this_obj, jint bus_id, jint chip_address,
+                               jint reg, jintArray buf)
 {
-#if 0
     char                        device_name[100];
     int                         fd;
     ssize_t                     status;
@@ -245,19 +280,19 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrBuf(JNIEnv *env,
     uint8_t *                   byte_buffer = NULL;
     jint *                      jint_buffer = NULL;
     int                         err;
-    jintArray                   retval;
+    jsize                       bufsize;
 
-    snprintf(device_name, sizeof(device_name), "/dev/i2c-%d", bus_id);
+    (void)env;
+    (void)this_obj;
 
+    bufsize = env->GetArrayLength(buf);
     byte_buffer = (uint8_t  *)malloc(bufsize);
 
     if (!byte_buffer) {
         err = ENOBUFS;
         goto FAILURE_EXIT;
     }
-
-    jint_buffer = (jint *)malloc(sizeof(jint) * bufsize);
-
+    snprintf(device_name, sizeof(device_name), "/dev/i2c-%d", bus_id);
     fd = open(device_name, O_RDWR);
 
     if (fd < 0) {
@@ -283,8 +318,12 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrBuf(JNIEnv *env,
         close(fd);
         goto FAILURE_EXIT;
     }
+    jint_buffer = env->GetIntArrayElements(buf, NULL);
 
-    status = read(fd, byte_buffer, bufsize);
+    for (int idx = 0; idx < bufsize; idx++) {
+        byte_buffer[idx] = (uint8_t)jint_buffer[idx];
+    }
+    status = write(fd, byte_buffer, bufsize);
 
     if (status != bufsize) {
         if (status < 0) {
@@ -297,35 +336,24 @@ Java_com_teslameter_nr_teslameter_I2cSlave_i2cWrBuf(JNIEnv *env,
     }
     close(fd);
 
-    for (int idx = 0; idx < bufsize; idx++) {
-        jint_buffer[idx] = byte_buffer[idx];
-    }
-
-    retval = env->NewIntArray(bufsize);
-
-    if (retval != NULL) {
-        env->SetIntArrayRegion(retval, 0, bufsize, jint_buffer);
-    }
+    env->ReleaseIntArrayElements(buf, jint_buffer, 0);
     free(byte_buffer);
-    free(jint_buffer);
 
-    return (retval);
-    FAILURE_EXIT:
-    jint_buffer[0] = err;
-    retval = env->NewIntArray(1);
+    return (0);
+FAILURE_EXIT:
 
-    if (retval != NULL) {
-        env->SetIntArrayRegion(retval, 0, 1, jint_buffer);
+    if (jint_buffer) {
+        env->ReleaseIntArrayElements(buf, jint_buffer, 0);
     }
 
     if (byte_buffer) {
         free(byte_buffer);
     }
 
-    if (jint_buffer) {
-        free(jint_buffer);
-    }
-    return (retval);
-#endif
-    return (NULL);
+    return (err);
 }
+
+/*====================================================*//** @cond *//*==  CONFIGURATION ERRORS  ==*/
+/** @endcond *//** @} *//**************************************************************************
+ * END of i2c_client.cpp
+ **************************************************************************************************/

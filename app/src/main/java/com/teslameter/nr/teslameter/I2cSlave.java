@@ -26,12 +26,12 @@ class I2cSlave {
     }
 
     /* Public methods */
-    I2cSlave(int bus_id, int chip_id) {
+    public I2cSlave(int bus_id, int chip_id) {
         this.bus_id = bus_id;
         this.chip_id = chip_id;
     }
 
-    void writeReg(int reg, int data) throws IOException {
+    public void writeReg(int reg, int data) throws IOException {
         this.assert_arg_reg(reg);
 
         if ((data < 0) || (data > 255)) {
@@ -47,7 +47,7 @@ class I2cSlave {
         }
     }
 
-    int readReg(int reg) throws IOException {
+    public int readReg(int reg) throws IOException {
         this.assert_arg_reg(reg);
 
         int retval = this.i2cRdReg(this.bus_id, this.chip_id, reg);
@@ -73,5 +73,9 @@ class I2cSlave {
                     "Failed to write to register %d: error %d", reg, retval[0]));
         }
         return retval;
+    }
+
+    static {
+        System.loadLibrary("i2c_slave");
     }
 }
