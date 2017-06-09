@@ -33,9 +33,10 @@ public class MainActivity extends Activity {
     private Thread producerThread;
     private Thread consumerThread;
     private Semaphore available;
-    private boolean shouldExit;
+    private volatile boolean shouldExit;
     private AlertDialog alertDialog;
     private ADT7410 adt7410;
+    private CdiManager cdiManager;
 
     int xRaw;
     int yRaw;
@@ -52,11 +53,6 @@ public class MainActivity extends Activity {
     String stats;
     String infos;
     TextView hdr_channel;
-
-    // Used to load the 'native-lib' library on application startup.
-    static {
-        System.loadLibrary("native-lib");
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,20 +119,20 @@ public class MainActivity extends Activity {
                         break;
                     }
 
-                    dataAcquire();
-                    xRaw = dataProbeXRaw();
-                    yRaw = dataProbeYRaw();
-                    zRaw = dataProbeZRaw();
-                    aux1Raw = dataAuxRaw(0);
-                    aux2Raw = dataAuxRaw(1);
-                    xVoltage = dataProbeXVoltage();
-                    yVoltage = dataProbeYVoltage();
-                    zVoltage = dataProbeZVoltage();
-                    aux1Voltage = dataAuxVoltage(0);
-                    aux2Voltage = dataAuxVoltage(1);
-                    stats = dataGetStats();
-                    infos = dataGetInfos();
-                    dataRelease();
+                    cdiManager.dataAcquire();
+                    xRaw = cdiManager.dataProbeXRaw();
+                    yRaw = cdiManager.dataProbeYRaw();
+                    zRaw = cdiManager.dataProbeZRaw();
+                    aux1Raw = cdiManager.dataAuxRaw(0);
+                    aux2Raw = cdiManager.dataAuxRaw(1);
+                    xVoltage = cdiManager.dataProbeXVoltage();
+                    yVoltage = cdiManager.dataProbeYVoltage();
+                    zVoltage = cdiManager.dataProbeZVoltage();
+                    aux1Voltage = cdiManager.dataAuxVoltage(0);
+                    aux2Voltage = cdiManager.dataAuxVoltage(1);
+                    stats = cdiManager.dataGetStats();
+                    infos = cdiManager.dataGetInfos();
+                    cdiManager.dataRelease();
 
                     try {
                         val = adt7410.readRawValue();
@@ -157,9 +153,9 @@ public class MainActivity extends Activity {
             public void run() {
                 int error;
 
-                rtcommInit(0);
+                cdiManager.rtcommInit(new int[] {0});
 
-                error = samplingOpen();
+                error = cdiManager.samplingOpen();
 
                 if (error != 0) {
                     shouldExit = true;
@@ -168,7 +164,7 @@ public class MainActivity extends Activity {
                 }
 
                 while(!shouldExit) {
-                    error = samplingRefresh();
+                    error = cdiManager.samplingRefresh();
 
                     if (error != 0) {
                         shouldExit = true;
@@ -177,7 +173,7 @@ public class MainActivity extends Activity {
                     }
                     available.release();
                 }
-                error = samplingClose();
+                error = cdiManager.samplingClose();
 
                 if (error != 0) {
                     shouldExit = true;
@@ -189,8 +185,9 @@ public class MainActivity extends Activity {
         shouldExit = false;
 
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-
-        rtcommInit(0);
+        cdiManager = new CdiManager( new int[] {1, 1, 1, 1, 1, 0, 0, 1, 3, 2, 5, 4, 20, 1, 1, 1, 1,
+                                                1, 1, 1, 1, 1, 1, 1, 1, 1000, 1000, 1000, 1000, 3,
+                                                3, 2});
 
         try {
             this.adt7410 = new ADT7410(2, 0);
@@ -268,24 +265,5 @@ public class MainActivity extends Activity {
      * A native method that is implemented by the 'native-lib' native library,
      * which is packaged with this application.
      */
-    public native int dataProbeXRaw();
-    public native int dataProbeYRaw();
-    public native int dataProbeZRaw();
-    public native int dataAuxRaw(int mchannel);
 
-    public native float dataProbeXVoltage();
-    public native float dataProbeYVoltage();
-    public native float dataProbeZVoltage();
-    public native float dataAuxVoltage(int mchannel);
-
-    public native String dataGetStats();
-    public native String dataGetInfos();
-
-    public native void dataAcquire();
-    public native void dataRelease();
-
-    public native int samplingOpen();
-    public native int samplingRefresh();
-    public native int samplingClose();
-    public native int rtcommInit(int mode);
 }

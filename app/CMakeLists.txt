@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 3.4.1)
 # Gradle automatically packages shared libraries with your APK.
 
 add_library( # Sets the name of the library.
-             native-lib
+             cdi_manager
 
              # Sets the library as a shared library.
              SHARED
@@ -18,7 +18,7 @@ add_library( # Sets the name of the library.
              # Provides a relative path to your source file(s).
              # Associated headers in the same location as their source
              # file are automatically included.
-             src/main/cpp/native-lib.cpp)
+             src/main/cpp/cdi_manager.cpp)
 
 add_library( i2c_slave
              SHARED
@@ -42,7 +42,7 @@ find_library( # Sets the name of the path variable.
 # build script, prebuilt third-party libraries, or system libraries.
 
 target_link_libraries( # Specifies the target library.
-                       native-lib
+                       cdi_manager
 
 
                        # Links the target library to the log library
