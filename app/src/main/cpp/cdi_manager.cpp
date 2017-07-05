@@ -32,6 +32,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <termios.h>
+#include <pthread.h>
 #include <sys/ioctl.h>
 #include <android/log.h>
 
@@ -40,6 +42,32 @@
 #include "teslameter_3mhx-cdi/io.h"
 
 /*=============================================================================  LOCAL MACRO's  ==*/
+
+/* ---------------------------------------------------------------------------------------------- *
+ * JNI MACRO HELPER                                                                               *
+ * ---------------------------------------------------------------------------------------------- *
+ *                                                                                                *
+ * Use the macro EXPORT_JNI_PACKAGE to easily define which package this JNI .cpp file belongs to. *
+ *                                                                                                *
+ * ---------------------------------------------------------------------------------------------- */
+
+#define EXPORT_JNI_PACKAGE              Java_com_teslameter_nr_teslameter_MainActivity_
+
+#define EXPORT_JNI_FUNC(rettype, name)                                                              \
+    extern "C" rettype EXPORT_JNI_PACKAGE ## name
+
+
+
+
+/* Compilation/runtime constants
+ * -----------------------------
+ * These constants should be part of initialization process and setup during the runtime, eg. when a
+ * class is instanced. Since we must finish the project in less than 24 hours, then fuck it. Define
+ * the constants here.
+ * */
+#define WINDOW_BUFF_SIZE                800
+#define VREF                            2.5
+#define UART_DEVICE                     "/dev/uart4"
 
 /* Andoird logger for C
  * --------------------
@@ -78,10 +106,15 @@ struct rtcomm_ctx
         }                           raw;
         uint32_t                    no_samples;
     }                           pp_buffer;
+    struct protocol {
+        int                         fd;
+        pthread_t                   thd_uart_reader_id;
+    }                           protocol;
     struct sysinfo
     {
         char                        drv_version[20];
     }                           sysinfo;
+    volatile bool               should_exit;
 };
 
 /*=================================================================  LOCAL FUNCTION PROTOTYPES  ==*/
@@ -179,6 +212,99 @@ static int32_t get_probe_x_raw(struct rtcomm_ctx * ctx, uint32_t channel)
     return (ctx->pp_buffer.raw.probe_value[channel]);
 }
 
+static void protocol_fsm(struct rtcomm_ctx * ctx, char character)
+{
+
+}
+
+static ssize_t protocol_read(struct rtcomm_ctx * ctx, char * character)
+{
+    ssize_t                     retval;
+
+    retval = read(ctx->protocol.fd, character, 1);
+
+    if (retval != 1) {
+        LOGE("Failed to read protocol file.");
+
+        return (errno);
+    } else {
+        return (0);
+    }
+}
+
+
+
+static ssize_t protocol_write(struct rtcomm_ctx * ctx, const void * data, size_t size)
+{
+    ssize_t                     retval;
+
+    retval = write(ctx->protocol.fd, data, size);
+
+    if (retval != (ssize_t)size) {
+        LOGE("Failed to write to protocol file.");
+
+        return (errno);
+    } else {
+        return (0);
+    }
+}
+
+static void * thd_uart_reader(void * arg)
+{
+    ssize_t                     error;
+    char                        character;
+    struct rtcomm_ctx *         ctx = (struct rtcomm_ctx *)arg;
+
+    while (!ctx->should_exit) {
+        struct input_event *      event;
+
+        error = protocol_read(ctx, &character);
+
+        if (!error) {
+            protocol_fsm(ctx, character);
+        } else {
+            sleep(1);
+        }
+    }
+
+    return (NULL);
+}
+
+static int open_uart(struct rtcomm_ctx * ctx, const char * device)
+{
+    int                         error;
+    struct termios              options;
+
+    ctx->protocol.fd = open(device, O_RDWR | O_NOCTTY);
+
+    if (ctx->protocol.fd == -1) {
+        return (errno);
+    }
+    tcgetattr(ctx->protocol.fd, &options);
+    /* NOTE:
+     * B115200 - 155200 baud
+     * CS8 - 8bit
+     * CLOCAL - ignore modem status lines
+     * CREAD - enable receiver
+     * IGNBRK, ICRNL - disable break processing, disable translate carriage return to newline
+     */
+    options.c_cflag = B115200 | CS8 | CLOCAL | CREAD;
+    options.c_iflag &= (unsigned)~(IGNBRK | INLCR | ICRNL);
+    options.c_oflag = 0;
+    options.c_lflag = 0;
+    tcflush(ctx->protocol.fd, TCIFLUSH);
+    tcsetattr(ctx->protocol.fd, TCSANOW, &options);
+
+    error = pthread_create(&ctx->protocol.thd_uart_reader_id, NULL, &thd_uart_reader, ctx);
+
+    if (error) {
+        close(ctx->protocol.fd);
+
+        return (error);
+    }
+
+    return (0);
+}
 
 /*===============================================================  GLOBAL FUNCTION DEFINITIONS  ==*/
 
