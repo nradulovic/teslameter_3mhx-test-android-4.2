@@ -24,6 +24,10 @@ add_library( i2c_slave
              SHARED
              src/main/cpp/i2c_slave.cpp)
 
+add_library( protocol
+             SHARED
+             src/main/cpp/protocol.cpp)
+
 # Searches for a specified prebuilt library and stores the path as a
 # variable. Because system libraries are included in the search path by
 # default, you only need to specify the name of the public NDK library
@@ -48,4 +52,14 @@ target_link_libraries( # Specifies the target library.
                        # Links the target library to the log library
                        # included in the NDK.
                        ${log-lib} )
-target_link_libraries(i2c_slave)
+target_link_libraries( # Specifies the target library.
+                       i2c_slave)
+
+target_link_libraries( # Specifies the target library.
+                       protocol
+
+
+                       # Links the target library to the log library
+                       # included in the NDK.
+                       ${log-lib} )
+

@@ -147,7 +147,7 @@ final class CdiManager {
     private void configureFirmware() {
 
     }
-    // Used to load the 'native-lib' library on application startup.
+    // Used to load the 'cdi_manager' library on application startup.
     static {
         System.loadLibrary("cdi_manager");
     }

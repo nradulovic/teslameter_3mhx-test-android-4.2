@@ -69,13 +69,13 @@ JNI_I2C_SLAVE(jint, i2cWrReg) (JNIEnv *env, jobject this_obj, jint bus_id, jint 
     fd = open(buff, O_RDWR);
 
     if (fd < 0) {
-        return (errno);
+        return (-errno);
     }
 
     status = ioctl(fd, I2C_SLAVE, chip_address);
 
     if (status < 0) {
-        err = errno;
+        err = -errno;
         close(fd);
 
         return (err);
@@ -84,9 +84,9 @@ JNI_I2C_SLAVE(jint, i2cWrReg) (JNIEnv *env, jobject this_obj, jint bus_id, jint 
 
     if (transferred != 1) {
         if (transferred < 0) {
-            err = errno;
+            err = -errno;
         } else {
-            err = EAGAIN;
+            err = -EAGAIN;
         }
         close(fd);
 
@@ -97,9 +97,9 @@ JNI_I2C_SLAVE(jint, i2cWrReg) (JNIEnv *env, jobject this_obj, jint bus_id, jint 
 
     if (transferred != 1) {
         if (transferred < 0) {
-            err = errno;
+            err = -errno;
         } else {
-            err = EAGAIN;
+            err = -EAGAIN;
         }
         close(fd);
 
@@ -129,12 +129,12 @@ JNI_I2C_SLAVE(jint, i2cRdReg) (JNIEnv *env, jobject this_obj, jint bus_id, jint 
     fd = open(device_name, O_RDWR);
 
     if (fd < 0) {
-        return (errno);
+        return (-errno);
     }
     status = ioctl(fd, I2C_SLAVE, chip_address);
 
     if (status < 0) {
-        err = errno;
+        err = -errno;
         close(fd);
 
         return (err);
@@ -144,9 +144,9 @@ JNI_I2C_SLAVE(jint, i2cRdReg) (JNIEnv *env, jobject this_obj, jint bus_id, jint 
 
     if (transferred != 1) {
         if (transferred < 0) {
-            err = errno;
+            err = -errno;
         } else {
-            err = EAGAIN;
+            err = -EAGAIN;
         }
         close(fd);
 
@@ -156,9 +156,9 @@ JNI_I2C_SLAVE(jint, i2cRdReg) (JNIEnv *env, jobject this_obj, jint bus_id, jint 
 
     if (transferred != 1) {
         if (transferred < 0) {
-            err = errno;
+            err = -errno;
         } else {
-            err = EAGAIN;
+            err = -EAGAIN;
         }
         close(fd);
 
@@ -189,27 +189,27 @@ JNI_I2C_SLAVE(jintArray, i2cRdBuf) (JNIEnv *env, jobject this_obj, jint bus_id, 
     byte_buffer = (uint8_t  *)malloc(bufsize);
 
     if (!byte_buffer) {
-        err = ENOBUFS;
+        err = -ENOBUFS;
         goto FAILURE_EXIT;
     }
 
     jint_buffer = (jint *)malloc(sizeof(jint) * bufsize);
 
     if (!jint_buffer) {
-        err = ENOBUFS;
+        err = -ENOBUFS;
         goto FAILURE_EXIT;
     }
 
     fd = open(device_name, O_RDWR);
 
     if (fd < 0) {
-        err = errno;
+        err = -errno;
         goto FAILURE_EXIT;
     }
     status = ioctl(fd, I2C_SLAVE, chip_address);
 
     if (status < 0) {
-        err = errno;
+        err = -errno;
         close(fd);
         goto FAILURE_EXIT;
     }
@@ -218,9 +218,9 @@ JNI_I2C_SLAVE(jintArray, i2cRdBuf) (JNIEnv *env, jobject this_obj, jint bus_id, 
 
     if (status != 1) {
         if (status < 0) {
-            err = errno;
+            err = -errno;
         } else {
-            err = EAGAIN;
+            err = -EAGAIN;
         }
         close(fd);
         goto FAILURE_EXIT;
@@ -230,9 +230,9 @@ JNI_I2C_SLAVE(jintArray, i2cRdBuf) (JNIEnv *env, jobject this_obj, jint bus_id, 
 
     if (status != bufsize) {
         if (status < 0) {
-            err = errno;
+            err = -errno;
         } else {
-            err = EAGAIN;
+            err = -EAGAIN;
         }
         close(fd);
         goto FAILURE_EXIT;
@@ -286,23 +286,23 @@ JNI_I2C_SLAVE(jint, i2cWrBuf) (JNIEnv *env, jobject this_obj, jint bus_id, jint 
     (void)this_obj;
 
     bufsize = env->GetArrayLength(buf);
-    byte_buffer = (uint8_t  *)malloc(bufsize);
+    byte_buffer = (uint8_t *)malloc(bufsize);
 
     if (!byte_buffer) {
-        err = ENOBUFS;
+        err = -ENOBUFS;
         goto FAILURE_EXIT;
     }
     snprintf(device_name, sizeof(device_name), "/dev/i2c-%d", bus_id);
     fd = open(device_name, O_RDWR);
 
     if (fd < 0) {
-        err = errno;
+        err = -errno;
         goto FAILURE_EXIT;
     }
     status = ioctl(fd, I2C_SLAVE, chip_address);
 
     if (status < 0) {
-        err = errno;
+        err = -errno;
         close(fd);
         goto FAILURE_EXIT;
     }
@@ -311,9 +311,9 @@ JNI_I2C_SLAVE(jint, i2cWrBuf) (JNIEnv *env, jobject this_obj, jint bus_id, jint 
 
     if (status != 1) {
         if (status < 0) {
-            err = errno;
+            err = -errno;
         } else {
-            err = EAGAIN;
+            err = -EAGAIN;
         }
         close(fd);
         goto FAILURE_EXIT;
@@ -327,9 +327,9 @@ JNI_I2C_SLAVE(jint, i2cWrBuf) (JNIEnv *env, jobject this_obj, jint bus_id, jint 
 
     if (status != bufsize) {
         if (status < 0) {
-            err = errno;
+            err = -errno;
         } else {
-            err = EAGAIN;
+            err = -EAGAIN;
         }
         close(fd);
         goto FAILURE_EXIT;

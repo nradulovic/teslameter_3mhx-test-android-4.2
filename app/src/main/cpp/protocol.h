@@ -21,11 +21,11 @@
  *//*******************************************************************************************//**
  * @file
  * @author      Nenad Radulovic
- * @brief       CDI Manager C interface
+ * @brief       Protocol C interface
  *****************************************************************************************//** @{ */
 
-#ifndef TESLAMETER_CDI_MANAGER_H
-#define TESLAMETER_CDI_MANAGER_H
+#ifndef TESLAMETER_PROTOCOL_H
+#define TESLAMETER_PROTOCOL_H
 
 /*=============================================================================  INCLUDE FILES  ==*/
 
@@ -37,72 +37,43 @@
  * JNI MACRO HELPER                                                                               *
  * ---------------------------------------------------------------------------------------------- *
  *                                                                                                *
- * Use the macro JNI_CDI_MANAGER_PACKAGE to easily define which package this JNI .cpp file        *
- * belongs to.                                                                                    *
+ * Use the macro JNI_PROTOCOL_PACKAGE to easily define which package this JNI .cpp file belongs   *
+ * to.                                                                                            *
  *                                                                                                *
  * ---------------------------------------------------------------------------------------------- */
 
-#define JNI_CDI_MANAGER_PACKAGE         Java_com_teslameter_nr_teslameter_CdiManager_
+#define JNI_PROTOCOL_PACKAGE            Java_com_teslameter_nr_teslameter_Protocol_
 
-#define JNI_CDI_MANAGER_P(rettype, package, name)                                                   \
+#define JNI_PROTOCOL_P(rettype, package, name)                                                      \
     extern "C" rettype package ## name
 
-#define JNI_CDI_MANAGER_PP(rettype, package, name)                                                  \
-    JNI_CDI_MANAGER_P(rettype, package, name)
+#define JNI_PROTOCOL_PP(rettype, package, name)                                                     \
+    JNI_PROTOCOL_P(rettype, package, name)
 
-#define JNI_CDI_MANAGER(rettype, name)                                                              \
-    JNI_CDI_MANAGER_PP(rettype, JNI_CDI_MANAGER_PACKAGE, name)
-
+#define JNI_PROTOCOL(rettype, name)                                                                 \
+    JNI_PROTOCOL_PP(rettype, JNI_PROTOCOL_PACKAGE, name)
 
 /* Compilation/runtime constants
  * -----------------------------
  * These constants should be part of initialization process and setup during the runtime, eg. when a
- * class is instanced. Since we must finish the project in less than 24 hours, then fuck it. Define
- * the constants here.
+ * class is instanced.
  * */
-#define WINDOW_BUFF_SIZE                800
-#define VREF                            2.5
+#define PROTOCOL_UART_DEVICE            "/dev/uart4"
 
 /*================================================================================  DATA TYPES  ==*/
 /*==========================================================================  GLOBAL VARIABLES  ==*/
 /*=======================================================================  FUNCTION PROTOTYPES  ==*/
 
-JNI_CDI_MANAGER(jint, rtcommInit) (JNIEnv *env, jobject this_obj, jintArray config_array);
+JNI_PROTOCOL(jint, protocolOpen) (JNIEnv *env, jobject this_obj);
 
-JNI_CDI_MANAGER(jint, rtcommTerminate) (JNIEnv *env, jobject this_obj);
+JNI_PROTOCOL(jint, protocolClose) (JNIEnv *env, jobject this_obj);
 
-JNI_CDI_MANAGER(jint, dataAcquire) (JNIEnv *env, jobject this_obj);
+JNI_PROTOCOL(jint, protocolRdByte) (JNIEnv *env, jobject this_obj);
 
-JNI_CDI_MANAGER(jint, dataRelease) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jint, dataProbeXRaw) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jint, dataProbeYRaw) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jint, dataProbeZRaw) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jint, dataAuxRaw) (JNIEnv *env, jobject this_obj, jint mchannel);
-
-JNI_CDI_MANAGER(jfloat, dataProbeXVoltage) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jfloat, dataProbeYVoltage) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jfloat, dataProbeZVoltage) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jfloat, dataAuxVoltage) (JNIEnv *env, jobject this_obj, jint mchannel);
-
-JNI_CDI_MANAGER(jstring, dataGetStats) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jstring, dataGetInfos) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jint, samplingOpen) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jint, samplingRefresh) (JNIEnv *env, jobject this_obj);
-
-JNI_CDI_MANAGER(jint, samplingClose) (JNIEnv *env, jobject this_obj);
+JNI_PROTOCOL(jint, protocolWrBuf) (JNIEnv *env, jobject this_obj, jintArray buf);
 
 /*====================================================*//** @cond *//*==  CONFIGURATION ERRORS  ==*/
 /** @endcond *//** @} *//**************************************************************************
  * END of cdi_manager.h
  **************************************************************************************************/
-#endif /* TESLAMETER_CDI_MANAGER_H */
+#endif /* TESLAMETER_UART_PROTOCOL_H */
