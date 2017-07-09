@@ -123,24 +123,6 @@ public class MainActivity extends Activity {
                         break;
                     }
 
-                    cdiManager.dataAcquire();
-                    xRaw = cdiManager.dataProbeXRaw();
-                    yRaw = cdiManager.dataProbeYRaw();
-                    zRaw = cdiManager.dataProbeZRaw();
-                    aux1Raw = cdiManager.dataAuxRaw(0);
-                    aux2Raw = cdiManager.dataAuxRaw(1);
-                    xVoltage = cdiManager.dataProbeXVoltage();
-                    yVoltage = cdiManager.dataProbeYVoltage();
-                    zVoltage = cdiManager.dataProbeZVoltage();
-                    aux1Voltage = cdiManager.dataAuxVoltage(0);
-                    aux2Voltage = cdiManager.dataAuxVoltage(1);
-                    xRawArray = cdiManager.dataProbeXRawArray();
-                    yRawArray = cdiManager.dataProbeYRawArray();
-                    zRawArray = cdiManager.dataProbeZRawArray();
-                    stats = cdiManager.dataGetStats();
-                    infos = cdiManager.dataGetInfos();
-                    cdiManager.dataRelease();
-
                     try {
                         val = adt7410.readRawValue();
                     } catch (IOException e) {
@@ -178,6 +160,23 @@ public class MainActivity extends Activity {
                         gracefulExit(0, "Failed to refresh sampling", error);
                         return;
                     }
+                    cdiManager.dataAcquire();
+                    xRaw = cdiManager.dataProbeXRaw();
+                    yRaw = cdiManager.dataProbeYRaw();
+                    zRaw = cdiManager.dataProbeZRaw();
+                    aux1Raw = cdiManager.dataAuxRaw(0);
+                    aux2Raw = cdiManager.dataAuxRaw(1);
+                    xVoltage = cdiManager.dataProbeXVoltage();
+                    yVoltage = cdiManager.dataProbeYVoltage();
+                    zVoltage = cdiManager.dataProbeZVoltage();
+                    aux1Voltage = cdiManager.dataAuxVoltage(0);
+                    aux2Voltage = cdiManager.dataAuxVoltage(1);
+                    xRawArray = cdiManager.dataProbeXRawArray();
+                    yRawArray = cdiManager.dataProbeYRawArray();
+                    zRawArray = cdiManager.dataProbeZRawArray();
+                    stats = cdiManager.dataGetStats();
+                    infos = cdiManager.dataGetInfos();
+                    cdiManager.dataRelease();
                     available.release();
                 }
                 error = cdiManager.samplingClose();
