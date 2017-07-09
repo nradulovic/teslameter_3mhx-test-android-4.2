@@ -20,6 +20,9 @@ public class Protocol {
     public void open() {
         this.protocolOpen();
 
+
+    }
+    public void process_events() {
         this.readerTask = new MyRunnable(this) {
             @Override
             public void run() {
@@ -33,7 +36,7 @@ public class Protocol {
                         this.protocol.shouldExit = true;
                         break;
                     } else {
-                        response = this.protocol.process_input(character);
+                        response = this.protocol.process_input(this.protocol, character);
                     }
 
                     if (response.length > 0) {
@@ -51,7 +54,17 @@ public class Protocol {
     }
 
     public void close() {
+        this.shouldExit = true;
+        try {
+            this.readerThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         protocolClose();
+    }
+
+    public void push_data(int[] probe_x, int[] probe_y, int[] probe_z, int aux, float temp_e) {
+
     }
 
     private abstract class MyRunnable implements Runnable {
@@ -66,8 +79,9 @@ public class Protocol {
     private Thread readerThread;
     private volatile boolean shouldExit;
     private static final String TAG = "Protocol";
+    private boolean shouldGetData;
 
-    private int [] process_input(int character) {
+    private int[] process_input(Protocol protocol, int character) {
         int[] retval = {1, 2, 3};
         return retval;
     }

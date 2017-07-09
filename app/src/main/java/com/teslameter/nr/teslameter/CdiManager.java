@@ -101,7 +101,7 @@ final class CdiManager {
 
     }
 
-    public CdiManager(int [] configArray) {
+    public CdiManager(int[] configArray) {
         if (configArray.length != this.configKeys.length) {
             throw new IllegalArgumentException(String.format(Locale.getDefault(),
                     "configArray argument must have %d elements, but has %d elements",
@@ -117,7 +117,7 @@ final class CdiManager {
         for (ParamKey configKey : this.configKeys) {
             if (configKey.getName().equals(name)) {
                 configKey.setValue(value);
-                break;
+                return;
             }
         }
         throw new NoSuchElementException();

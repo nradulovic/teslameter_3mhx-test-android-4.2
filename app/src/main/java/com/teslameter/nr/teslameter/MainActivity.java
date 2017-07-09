@@ -37,6 +37,7 @@ public class MainActivity extends Activity {
     private AlertDialog alertDialog;
     private ADT7410 adt7410;
     private CdiManager cdiManager;
+    private Protocol protocol;
 
     int xRaw;
     int yRaw;
@@ -50,6 +51,9 @@ public class MainActivity extends Activity {
     float aux1Voltage;
     float aux2Voltage;
     float etempFinal;
+    int[] xRawArray;
+    int[] yRawArray;
+    int[] zRawArray;
     String stats;
     String infos;
     TextView hdr_channel;
@@ -130,6 +134,9 @@ public class MainActivity extends Activity {
                     zVoltage = cdiManager.dataProbeZVoltage();
                     aux1Voltage = cdiManager.dataAuxVoltage(0);
                     aux2Voltage = cdiManager.dataAuxVoltage(1);
+                    xRawArray = cdiManager.dataProbeXRawArray();
+                    yRawArray = cdiManager.dataProbeYRawArray();
+                    zRawArray = cdiManager.dataProbeZRawArray();
                     stats = cdiManager.dataGetStats();
                     infos = cdiManager.dataGetInfos();
                     cdiManager.dataRelease();
@@ -194,6 +201,8 @@ public class MainActivity extends Activity {
         } catch (IOException e) {
             gracefulExit(0, "Failed to initialize ADT7410", 0);
         }
+        this.protocol = new Protocol();
+        this.protocol.open();
         consumerThread = new Thread(consumerTask);
         consumerThread.setPriority(Thread.MAX_PRIORITY);
         consumerThread.start();
