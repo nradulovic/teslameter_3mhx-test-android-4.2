@@ -1,8 +1,16 @@
 package com.teslameter.nr.teslameter;
+import android.util.Log;
 
 /**
  * Created by nenad on 5.7.17..
  */
+
+
+/*
+ * import static android.content.ContentValues.TAG;
+ */
+
+
 
 public class Protocol {
     public Protocol() {
@@ -16,13 +24,24 @@ public class Protocol {
             @Override
             public void run() {
                 while (!this.protocol.shouldExit) {
+                    int[] response;
                     int character = this.protocol.protocolRdByte();
+                    int status;
 
                     if (character < 0) {
+                        Log.e(Protocol.TAG, String.format("protocolRdByte() = %d", character));
                         this.protocol.shouldExit = true;
                         break;
                     } else {
-                        this.protocol.process_input(character);
+                        response = this.protocol.process_input(character);
+                    }
+
+                    if (response.length > 0) {
+                        status = this.protocol.protocolWrBuf(response);
+
+                        if (status != 0) {
+                            Log.e(Protocol.TAG, String.format("protocolWrBuf() = %d", status));
+                        }
                     }
                 }
             }
@@ -46,9 +65,11 @@ public class Protocol {
     private MyRunnable readerTask;
     private Thread readerThread;
     private volatile boolean shouldExit;
+    private static final String TAG = "Protocol";
 
-    private void process_input(int character) {
-
+    private int [] process_input(int character) {
+        int[] retval = {1, 2, 3};
+        return retval;
     }
     // Protocol library functions
     private native int protocolOpen();

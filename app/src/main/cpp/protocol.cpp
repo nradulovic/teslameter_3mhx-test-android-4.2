@@ -28,6 +28,8 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <termios.h>
 #include <android/log.h>
 
@@ -49,6 +51,7 @@
 
 struct protocol_ctx {
     int                         fd;
+    bool                        is_initialized;
 };
 
 /*=================================================================  LOCAL FUNCTION PROTOTYPES  ==*/
@@ -86,6 +89,7 @@ JNI_PROTOCOL(jint, protocolOpen) (JNIEnv *env, jobject this_obj)
     options.c_lflag = 0;
     tcflush(ctx->fd, TCIFLUSH);
     tcsetattr(ctx->fd, TCSANOW, &options);
+    ctx->is_initialized = true;
 
     return (0);
 }
@@ -94,7 +98,9 @@ JNI_PROTOCOL(jint, protocolClose) (JNIEnv *env, jobject this_obj)
 {
     struct protocol_ctx *       ctx = &g_ctx;
 
-    close(ctx->fd);
+    if (ctx->is_initialized) {
+        close(ctx->fd);
+    }
 
     return (0);
 }
@@ -106,6 +112,10 @@ JNI_PROTOCOL(jint, protocolRdByte) (JNIEnv *env, jobject this_obj)
     struct protocol_ctx *       ctx = &g_ctx;
 
     retval = read(ctx->fd, &character, 1);
+
+    if (!ctx->is_initialized) {
+        return (-ENODEV);
+    }
 
     if (retval != 1) {
         LOGE("Failed to read protocol file: %d", errno);
@@ -125,6 +135,9 @@ JNI_PROTOCOL(jint, protocolWrBuf) (JNIEnv *env, jobject this_obj, jintArray buf)
     int                         err;
     struct protocol_ctx *       ctx = &g_ctx;
 
+    if (!ctx->is_initialized) {
+        return (-ENODEV);
+    }
     bufsize = env->GetArrayLength(buf);
     byte_buffer = (uint8_t *)malloc(bufsize);
 
