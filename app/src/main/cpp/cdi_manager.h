@@ -91,6 +91,12 @@ JNI_CDI_MANAGER(jfloat, dataProbeZVoltage) (JNIEnv *env, jobject this_obj);
 
 JNI_CDI_MANAGER(jfloat, dataAuxVoltage) (JNIEnv *env, jobject this_obj, jint mchannel);
 
+JNI_CDI_MANAGER(jintArray , dataProbeXRawArray) (JNIEnv *env, jobject this_obj);
+
+JNI_CDI_MANAGER(jintArray , dataProbeYRawArray) (JNIEnv *env, jobject this_obj);
+
+JNI_CDI_MANAGER(jintArray , dataProbeZRawArray) (JNIEnv *env, jobject this_obj);
+
 JNI_CDI_MANAGER(jstring, dataGetStats) (JNIEnv *env, jobject this_obj);
 
 JNI_CDI_MANAGER(jstring, dataGetInfos) (JNIEnv *env, jobject this_obj);

@@ -133,6 +133,10 @@ final class CdiManager {
     public native float dataProbeZVoltage();
     public native float dataAuxVoltage(int mchannel);
 
+    public native int[] dataProbeXRawArray();
+    public native int[] dataProbeYRawArray();
+    public native int[] dataProbeZRawArray();
+
     public native String dataGetStats();
     public native String dataGetInfos();
 
@@ -142,7 +146,7 @@ final class CdiManager {
     public native int samplingOpen();
     public native int samplingRefresh();
     public native int samplingClose();
-    public native int rtcommInit(int [] config);
+    public native int rtcommInit(int[] config);
 
     private void configureFirmware() {
 

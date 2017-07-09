@@ -155,6 +155,8 @@ static void post_process(struct rtcomm_ctx * ctx)
         /*
          * TODO: Resample the buffer to 800 samples
          */
+        memcpy(&ctx->pp_buffer.raw.probe_window[0][0], &ctx->io_buffer.sample[0][0],
+               sizeof(int32_t) * IO_PROBE_CHANNELS * 800);
     }
     /* Save all probe values */
     memcpy(&ctx->pp_buffer.raw.probe_array[0][0], &ctx->io_buffer.sample[0][0],
@@ -300,6 +302,81 @@ JNI_CDI_MANAGER(jfloat, dataAuxVoltage) (JNIEnv *env, jobject this_obj, jint mch
     return ((float)(get_aux_raw(ctx, mchannel) * VQUANT_MV));
 }
 
+/* Array methods */
+
+JNI_CDI_MANAGER(jintArray , dataProbeXRawArray) (JNIEnv *env, jobject this_obj)
+{
+    jint                        jint_buffer[IO_BUFF_SIZE];
+    jintArray                   retval;
+    int                         idx;
+
+    (void)this_obj;
+
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
+    retval = env->NewIntArray(ctx->pp_buffer.no_samples);
+
+    if (retval == NULL) {
+        return NULL;
+    }
+
+    for (idx = 0; idx < ctx->pp_buffer.no_samples; idx++) {
+        jint_buffer[idx] = ctx->pp_buffer.raw.probe_array[idx][IO_CHANNEL_X];
+    }
+    env->SetIntArrayRegion(retval, 0, ctx->pp_buffer.no_samples, jint_buffer);
+
+    return (retval);
+}
+
+JNI_CDI_MANAGER(jintArray, dataProbeYRawArray) (JNIEnv *env, jobject this_obj)
+{
+    jint                        jint_buffer[IO_BUFF_SIZE];
+    jintArray                   retval;
+    int                         idx;
+
+    (void)this_obj;
+
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
+    retval = env->NewIntArray(ctx->pp_buffer.no_samples);
+
+    if (retval == NULL) {
+        return NULL;
+    }
+
+    for (idx = 0; idx < ctx->pp_buffer.no_samples; idx++) {
+        jint_buffer[idx] = ctx->pp_buffer.raw.probe_array[idx][IO_CHANNEL_Y];
+    }
+    env->SetIntArrayRegion(retval, 0, ctx->pp_buffer.no_samples, jint_buffer);
+
+    return (retval);
+}
+
+JNI_CDI_MANAGER(jintArray, dataProbeZRawArray) (JNIEnv *env, jobject this_obj)
+{
+    jint                        jint_buffer[IO_BUFF_SIZE];
+    jintArray                   retval;
+    int                         idx;
+
+    (void)this_obj;
+
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
+    retval = env->NewIntArray(ctx->pp_buffer.no_samples);
+
+    if (retval == NULL) {
+        return NULL;
+    }
+
+    for (idx = 0; idx < ctx->pp_buffer.no_samples; idx++) {
+        jint_buffer[idx] = ctx->pp_buffer.raw.probe_array[idx][IO_CHANNEL_Z];
+    }
+    env->SetIntArrayRegion(retval, 0, ctx->pp_buffer.no_samples, jint_buffer);
+
+    return (retval);
+}
+
+/* Misc methods */
 
 JNI_CDI_MANAGER(jstring, dataGetStats) (JNIEnv *env, jobject this_obj)
 {
