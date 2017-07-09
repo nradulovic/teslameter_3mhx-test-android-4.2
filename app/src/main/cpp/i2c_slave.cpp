@@ -253,11 +253,11 @@ JNI_I2C_SLAVE(jintArray, i2cRdBuf) (JNIEnv *env, jobject this_obj, jint bus_id, 
 
     return (retval);
 FAILURE_EXIT:
-    jint_buffer[0] = err * 256;
+    jint jint_value = err * 256;
     retval = env->NewIntArray(1);
 
     if (retval != NULL) {
-        env->SetIntArrayRegion(retval, 0, 1, jint_buffer);
+        env->SetIntArrayRegion(retval, 0, 1, &jint_value);
     }
 
     if (byte_buffer) {
