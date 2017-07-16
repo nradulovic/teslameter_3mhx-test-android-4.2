@@ -41,6 +41,8 @@
 #include "rtcomm/rtcomm.h"
 #include "teslameter_3mhx-cdi/io.h"
 
+#include <semaphore.h>
+
 /*=============================================================================  LOCAL MACRO's  ==*/
 
 /* Andoird logger for C
@@ -57,6 +59,7 @@
  * ------------
  */
 #define VQUANT_MV                       (((VREF * 2.0) / (8388608 - 1)) * 1000.0)
+#define ENABLE_FIFO                     1
 
 /*==========================================================================  LOCAL DATA TYPES  ==*/
 
@@ -85,6 +88,11 @@ struct rtcomm_ctx
         char                        drv_version[20];
     }                           sysinfo;
     volatile bool               should_exit;
+#if (ENABLE_FIFO == 1)
+    sem_t                       items;
+    sem_t                       spaces;
+    pthread_mutex_t             mutex;
+#endif
 };
 
 /*=================================================================  LOCAL FUNCTION PROTOTYPES  ==*/
@@ -190,9 +198,15 @@ static int32_t get_probe_x_raw(struct rtcomm_ctx * ctx, uint32_t channel)
 
 JNI_CDI_MANAGER(jint, rtcommInit) (JNIEnv *env, jobject this_obj, jintArray config_array)
 {
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
     (void)env;
     (void)this_obj;
-
+#if (ENABLE_FIFO == 1)
+    sem_init(&ctx->items, 0, 0);
+    sem_init(&ctx->spaces, 0, 1);
+    pthread_mutex_init(&ctx->mutex, NULL);
+#endif
     return (0);
 }
 
@@ -208,17 +222,27 @@ JNI_CDI_MANAGER(jint, rtcommTerminate) (JNIEnv *env, jobject this_obj)
 
 JNI_CDI_MANAGER(jint, dataAcquire) (JNIEnv *env, jobject this_obj)
 {
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
     (void)env;
     (void)this_obj;
-
+#if (ENABLE_FIFO == 1)
+    sem_wait(&ctx->items);
+    pthread_mutex_lock(&ctx->mutex);
+#endif
     return (0);
 }
 
 JNI_CDI_MANAGER(jint, dataRelease) (JNIEnv *env, jobject this_obj)
 {
+    struct rtcomm_ctx *         ctx = &g_ctx;
+
     (void)env;
     (void)this_obj;
-
+#if (ENABLE_FIFO == 1)
+    pthread_mutex_unlock(&ctx->mutex);
+    sem_post(&ctx->spaces);
+#endif
     return (0);
 }
 
@@ -501,16 +525,24 @@ JNI_CDI_MANAGER(jint, samplingRefresh) (JNIEnv *env, jobject this_obj)
 
     if (ret != sizeof(ctx->io_buffer)) {
         if (ret == -1) {
-            LOGE("Failed to read, error: %d\n", errno);
+            LOGE("samplingRefresh: failed to read, error: %d\n", errno);
 
             return (errno);
         } else {
-            LOGE("Failed to read %d bytes\n", sizeof(ctx->io_buffer));
+            LOGE("samplingRefresh: failed to read %d bytes\n", sizeof(ctx->io_buffer));
 
             return (ECANCELED);
         }
     }
+#if (ENABLE_FIFO == 1)
+    sem_wait(&ctx->spaces);
+    pthread_mutex_lock(&ctx->mutex);
+#endif
     post_process(ctx);
+#if (ENABLE_FIFO == 1)
+    pthread_mutex_unlock(&ctx->mutex);
+    sem_post(&ctx->items);
+#endif
 
     return (0);
 }
