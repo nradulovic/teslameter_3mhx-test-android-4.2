@@ -255,7 +255,7 @@ JNI_PROTOCOL(jint, protocolWrBuf) (JNIEnv *env, jobject this_obj, jintArray buf)
     }
     /* Inform the user through logger */
     {
-        int str_len = strlen((char *)byte_buffer);
+        size_t str_len = strlen((char *)byte_buffer);
 
         if (str_len == bufsize) {
             LOGI("WrBuf: \'%s\'", byte_buffer);
