@@ -58,7 +58,7 @@
  * These constants should be part of initialization process and setup during the runtime, eg. when a
  * class is instanced.
  * */
-#define PROTOCOL_UART_DEVICE            "/dev/uart4"
+#define PROTOCOL_UART_DEVICE            "/dev/ttyO4"
 
 /*================================================================================  DATA TYPES  ==*/
 /*==========================================================================  GLOBAL VARIABLES  ==*/
