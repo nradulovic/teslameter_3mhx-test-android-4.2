@@ -1,6 +1,8 @@
 package com.teslameter.nr.teslameter;
 import android.util.Log;
 
+import java.io.IOException;
+
 /**
  * Created by nenad on 5.7.17..
  */
@@ -13,23 +15,47 @@ import android.util.Log;
 
 
 public class Protocol {
-    public Protocol() {
+    public Protocol(CdiManager cdiManager) {
         this.shouldExit = false;
+        this.cdiManager = cdiManager;
     }
 
-    public void open() {
-        this.protocolOpen();
+    public void open() throws IOException {
+        int status;
+        status = this.protocolOpen();
 
-
+        if (status != 0) {
+            Log.e(Protocol.TAG, String.format("protocolOpen() = %d", status));
+            throw new IOException();
+        }
     }
     public void process_events() {
         this.readerTask = new MyRunnable(this) {
             @Override
             public void run() {
+                int status;
+
+                status = this.protocol.protocolWrBuf(new int[] {78, 69, 83, 65});
+
+                if (status != 0) {
+                    Log.e(Protocol.TAG, String.format("protocolWrBuff('hello') = %d", status));
+                }
+
+                while (!this.protocol.shouldExit) {
+                    status = this.protocol.protocolWrBuf(new int[] {78, 69, 83, 65});
+
+                    if (status != 0) {
+                        Log.e(Protocol.TAG, String.format("protocolWrBuff('hello') = %d", status));
+                    }
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
                 while (!this.protocol.shouldExit) {
                     int[] response;
                     int character = this.protocol.protocolRdByte();
-                    int status;
 
                     if (character < 0) {
                         Log.e(Protocol.TAG, String.format("protocolRdByte() = %d", character));
@@ -63,10 +89,6 @@ public class Protocol {
         protocolClose();
     }
 
-    public void push_data(int[] probe_x, int[] probe_y, int[] probe_z, int aux, float temp_e) {
-
-    }
-
     private abstract class MyRunnable implements Runnable {
         public Protocol protocol;
 
@@ -74,12 +96,11 @@ public class Protocol {
             this.protocol = protocol;
         }
     };
-
+    private CdiManager cdiManager;
     private MyRunnable readerTask;
     private Thread readerThread;
     private volatile boolean shouldExit;
     private static final String TAG = "Protocol";
-    private boolean shouldGetData;
 
     private int[] process_input(Protocol protocol, int character) {
         int[] retval = {1, 2, 3};

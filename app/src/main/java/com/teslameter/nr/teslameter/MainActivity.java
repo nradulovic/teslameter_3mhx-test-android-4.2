@@ -10,7 +10,6 @@ import android.widget.TextView;
 
 import java.io.IOException;
 import java.util.Locale;
-import java.util.concurrent.Semaphore;
 
 public class MainActivity extends Activity {
     private TextView tvXraw;
@@ -28,34 +27,13 @@ public class MainActivity extends Activity {
     private TextView tvEtempRaw;
     private TextView tvEtempFinal;
     private Runnable refrestTask;
-    private Runnable producerTask;
-    private Runnable consumerTask;
-    private Thread producerThread;
-    private Thread consumerThread;
-    private Semaphore available;
-    private volatile boolean shouldExit;
+    private Runnable listenerTask;
+    private Runnable informerTask;
     private AlertDialog alertDialog;
-    private ADT7410 adt7410;
     private CdiManager cdiManager;
     private Protocol protocol;
+    private CdiManager.RawData rawData;
 
-    int xRaw;
-    int yRaw;
-    int zRaw;
-    int aux1Raw;
-    int aux2Raw;
-    int etempRaw = 0;
-    float xVoltage;
-    float yVoltage;
-    float zVoltage;
-    float aux1Voltage;
-    float aux2Voltage;
-    float etempFinal;
-    int[] xRawArray;
-    int[] yRawArray;
-    int[] zRawArray;
-    String stats;
-    String infos;
     TextView hdr_channel;
 
     @Override
@@ -63,165 +41,99 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        tvXraw =        (TextView) findViewById(R.id.x_raw);
-        tvYraw =        (TextView) findViewById(R.id.y_raw);
-        tvZraw =        (TextView) findViewById(R.id.z_raw);
-        tvAux1raw =     (TextView) findViewById(R.id.aux1_raw);
-        tvAux2raw =     (TextView) findViewById(R.id.aux2_raw);
+        tvXraw = (TextView) findViewById(R.id.x_raw);
+        tvYraw = (TextView) findViewById(R.id.y_raw);
+        tvZraw = (TextView) findViewById(R.id.z_raw);
+        tvAux1raw = (TextView) findViewById(R.id.aux1_raw);
+        tvAux2raw = (TextView) findViewById(R.id.aux2_raw);
         tvAux1Voltage = (TextView) findViewById(R.id.aux1_voltage);
         tvAux2Voltage = (TextView) findViewById(R.id.aux2_voltage);
-        tvXvoltage =    (TextView) findViewById(R.id.x_voltage);
-        tvYvoltage =    (TextView) findViewById(R.id.y_voltage);
-        tvZvoltage =    (TextView) findViewById(R.id.z_voltage);
-        tvStats =       (TextView) findViewById(R.id.stats);
-        tvInfos =       (TextView) findViewById(R.id.infos);
-        tvEtempRaw =    (TextView) findViewById(R.id.etemp_raw);
-        tvEtempFinal =  (TextView) findViewById(R.id.etemp_final);
+        tvXvoltage = (TextView) findViewById(R.id.x_voltage);
+        tvYvoltage = (TextView) findViewById(R.id.y_voltage);
+        tvZvoltage = (TextView) findViewById(R.id.z_voltage);
+        tvStats = (TextView) findViewById(R.id.stats);
+        tvInfos = (TextView) findViewById(R.id.infos);
+        tvEtempRaw = (TextView) findViewById(R.id.etemp_raw);
+        tvEtempFinal = (TextView) findViewById(R.id.etemp_final);
 
-        hdr_channel =  (TextView) findViewById(R.id.hdr_channel);
+        hdr_channel = (TextView) findViewById(R.id.hdr_channel);
 
         hdr_channel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this,HelloActivity.class);
+                Intent intent = new Intent(MainActivity.this, HelloActivity.class);
                 startActivity(intent);
             }
         });
-        available = new Semaphore(0);
 
         refrestTask = new Runnable() {
             @Override
             public void run() {
-                tvXraw.setText(String.format(Locale.getDefault(), "%d",xRaw));
-                tvYraw.setText(String.format(Locale.getDefault(), "%d",yRaw));
-                tvZraw.setText(String.format(Locale.getDefault(), "%d",zRaw));
-                tvAux1raw.setText(String.format(Locale.getDefault(), "%d", aux1Raw));
-                tvAux2raw.setText(String.format(Locale.getDefault(), "%d", aux2Raw));
+                tvXraw.setText(Integer.toString(rawData.x));
+                tvYraw.setText(Integer.toString(rawData.y));
+                tvZraw.setText(Integer.toString(rawData.z));
+                tvAux1raw.setText(Integer.toString(rawData.aux1));
+                tvAux2raw.setText(Integer.toString(rawData.aux2));
 
-                tvXvoltage.setText(String.format(Locale.getDefault(), "%.3f", xVoltage));
-                tvYvoltage.setText(String.format(Locale.getDefault(), "%.3f", yVoltage));
-                tvZvoltage.setText(String.format(Locale.getDefault(), "%.3f", zVoltage));
-                tvAux1Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux1Voltage));
-                tvAux2Voltage.setText(String.format(Locale.getDefault(), "%.3f", aux2Voltage));
+                tvXvoltage.setText(String.format(Locale.getDefault(), "%.3f", rawData.x * cdiManager.VQUANT));
+                tvYvoltage.setText(String.format(Locale.getDefault(), "%.3f", rawData.y * cdiManager.VQUANT));
+                tvZvoltage.setText(String.format(Locale.getDefault(), "%.3f", rawData.z * cdiManager.VQUANT));
+                tvAux1Voltage.setText(String.format(Locale.getDefault(), "%.3f", rawData.aux1 * cdiManager.VQUANT));
+                tvAux2Voltage.setText(String.format(Locale.getDefault(), "%.3f", rawData.aux2 * cdiManager.VQUANT));
 
-                tvEtempRaw.setText(String.format(Locale.getDefault(), "%d", etempRaw));
-                tvEtempFinal.setText(String.format(Locale.getDefault(), "%.3f", etempFinal));
+                tvEtempRaw.setText(Integer.toString(rawData.etemp));
+                tvEtempFinal.setText(String.format(Locale.getDefault(), "%.3f", cdiManager.calculateETemp(rawData.etemp)));
 
-                tvStats.setText(stats);
-                tvInfos.setText(infos);
+                tvStats.setText(rawData.stats);
+                tvInfos.setText(rawData.infos);
             }
         };
-        consumerTask = new Runnable() {
+        listenerTask = new Runnable() {
             @Override
             public void run() {
-                while (true) {
-                    int val;
-
-                    try {
-                        available.acquire();
-                    } catch (InterruptedException e) {
-                        break;
-                    }
-
-                    try {
-                        val = adt7410.readRawValue();
-                    } catch (IOException e) {
-                        val = 0;
-                    } catch (IllegalStateException e) {
-                        val = 0;
-                    }
-                    etempRaw = val;
-                    etempFinal = adt7410.calculateTemp(etempRaw);
-
-                    runOnUiThread(refrestTask);
-                }
+                rawData = cdiManager.fetchRawData();
+                runOnUiThread(refrestTask);
             }
         };
-        producerTask = new Runnable() {
+        informerTask = new Runnable() {
             @Override
             public void run() {
-                int error;
-
-                cdiManager.rtcommInit(new int[] {0});
-
-                error = cdiManager.samplingOpen();
-
-                if (error != 0) {
-                    shouldExit = true;
-                    gracefulExit(0, "Failed to open sampling", error);
-                    return;
-                }
-
-                while(!shouldExit) {
-                    error = cdiManager.samplingRefresh();
-
-                    if (error != 0) {
-                        shouldExit = true;
-                        gracefulExit(0, "Failed to refresh sampling", error);
-                        return;
-                    }
-                    cdiManager.dataAcquire();
-                    xRaw = cdiManager.dataProbeXRaw();
-                    yRaw = cdiManager.dataProbeYRaw();
-                    zRaw = cdiManager.dataProbeZRaw();
-                    aux1Raw = cdiManager.dataAuxRaw(0);
-                    aux2Raw = cdiManager.dataAuxRaw(1);
-                    xVoltage = cdiManager.dataProbeXVoltage();
-                    yVoltage = cdiManager.dataProbeYVoltage();
-                    zVoltage = cdiManager.dataProbeZVoltage();
-                    aux1Voltage = cdiManager.dataAuxVoltage(0);
-                    aux2Voltage = cdiManager.dataAuxVoltage(1);
-                    xRawArray = cdiManager.dataProbeXRawArray();
-                    yRawArray = cdiManager.dataProbeYRawArray();
-                    zRawArray = cdiManager.dataProbeZRawArray();
-                    stats = cdiManager.dataGetStats();
-                    infos = cdiManager.dataGetInfos();
-                    cdiManager.dataRelease();
-                    available.release();
-                }
-                error = cdiManager.samplingClose();
-
-                if (error != 0) {
-                    shouldExit = true;
-                    gracefulExit(0, "Failed to close sampling", error);
-                    return;
-                }
+                gracefulExit(0, cdiManager.informations.getMessage(), cdiManager.informations.getSource());
             }
         };
-        shouldExit = false;
-
         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-        cdiManager = new CdiManager( new int[] {1, 1, 1, 1, 1, 0, 0, 1, 3, 2, 5, 4, 20, 1, 1, 1, 1,
-                                                1, 1, 1, 1, 1, 1, 1, 1, 1000, 1000, 1000, 1000, 3,
-                                                3, 2});
 
         try {
-            this.adt7410 = new ADT7410(2, 0);
+            cdiManager = new CdiManager(new int[]{1, 1, 1, 1, 1, 0, 0, 1, 3, 2, 5, 4, 20, 1, 1, 1, 1,
+                    1, 1, 1, 1, 1, 1, 1, 1, 1000, 1000, 1000, 1000, 3,
+                    3, 2});
         } catch (IOException e) {
-            gracefulExit(0, "Failed to initialize ADT7410", 0);
+            e.printStackTrace();
         }
-        this.protocol = new Protocol();
-        this.protocol.open();
-        consumerThread = new Thread(consumerTask);
-        consumerThread.setPriority(Thread.MAX_PRIORITY);
-        consumerThread.start();
-        producerThread = new Thread(producerTask);
-        producerThread.setPriority(Thread.MAX_PRIORITY);
-        producerThread.start();
+        cdiManager.attachListener(listenerTask);
+        cdiManager.attachInformer(informerTask);
+        cdiManager.startSampling();
+
+        protocol = new Protocol(cdiManager);
+        try {
+            protocol.open();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        protocol.process_events();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        shouldExit = true;
         try {
-            producerThread.join(300);
+            cdiManager.stopSampling();
         } catch (InterruptedException e) {
-
+            e.printStackTrace();
         }
     }
 
-    void gracefulExit(final int msg_type, final String text, final int status) {
+    void gracefulExit(final int msg_type, final String text, final String status) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -243,7 +155,7 @@ public class MainActivity extends Activity {
                         break;
                 }
                 alertDialog.setTitle(title);
-                alertDialog.setMessage(String.format(Locale.getDefault(), "%s : %d", text, status));
+                alertDialog.setMessage(String.format(Locale.getDefault(), "%s : %s", text, status));
 
                 if (shouldExit) {
                     alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Exit",
@@ -268,10 +180,4 @@ public class MainActivity extends Activity {
             }
         });
     }
-
-    /**
-     * A native method that is implemented by the 'native-lib' native library,
-     * which is packaged with this application.
-     */
-
 }

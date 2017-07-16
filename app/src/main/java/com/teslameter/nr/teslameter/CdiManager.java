@@ -1,5 +1,8 @@
 package com.teslameter.nr.teslameter;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.NoSuchElementException;
 
@@ -8,6 +11,182 @@ import java.util.NoSuchElementException;
  */
 
 final class CdiManager {
+    public double VREF;
+    public double VQUANT;
+
+    public class Informations {
+        public Informations(String source, String message) {
+            this.source = source;
+            this.message = message;
+        }
+        public String getSource() {
+            return source;
+        }
+        public String getMessage() {
+            return message;
+        }
+        private String source;
+        private String message;
+    }
+    public class RawData {
+        /*
+         * Regular constructor
+         */
+        public RawData(int[] xArray, int[] yArray, int[] zArray, int x, int y, int z, int aux1,
+                       int aux2, int etemp, String stats, String infos) {
+            this.xArray = xArray;
+            this.yArray = yArray;
+            this.zArray = zArray;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.aux1 = aux1;
+            this.aux2 = aux2;
+            this.etemp = etemp;
+            this.stats = stats;
+            this.infos = infos;
+        }
+        /*
+         * Copy constructor
+         */
+        public RawData(RawData aRawData) {
+            this(aRawData.xArray, aRawData.yArray, aRawData.zArray, aRawData.x,
+                    aRawData.y, aRawData.z, aRawData.aux1, aRawData.aux2,
+                    aRawData.etemp, aRawData.stats, aRawData.infos);
+        }
+
+        public int[] xArray;
+        public int[] yArray;
+        public int[] zArray;
+        public int x;
+        public int y;
+        public int z;
+        public int aux1;
+        public int aux2;
+        public int etemp;
+        public String stats;
+        public String infos;
+    }
+
+    public RawData fetchRawData() {
+        //return new RawData(rawData);
+        return rawData;
+    }
+
+    private RawData rawData;
+
+    public Informations informations;
+
+    public CdiManager() throws IOException {
+        commonInitialization();
+    }
+
+    public CdiManager(int[] configArray) throws IOException {
+        if (configArray.length != this.configKeys.length) {
+            throw new IllegalArgumentException(String.format(Locale.getDefault(),
+                    "configArray argument must have %d elements, but has %d elements",
+                    this.configKeys.length, configArray.length));
+        }
+
+        for (int i = 0; i < this.configKeys.length; i++) {
+            this.configKeys[i].setValue(configArray[i]);
+        }
+        commonInitialization();
+    }
+
+    public void setConfigKey(String name, int value) throws NoSuchElementException {
+        for (ParamKey configKey : this.configKeys) {
+            if (configKey.getName().equals(name)) {
+                configKey.setValue(value);
+                return;
+            }
+        }
+        throw new NoSuchElementException();
+    }
+
+    public void startSampling() {
+        shouldExit = false;
+
+        Runnable producerTask = new Runnable() {
+            @Override
+            public void run() {
+                int error;
+
+                rtcommInit(new int[] {0});
+
+                error = samplingOpen();
+
+                if (error != 0) {
+                    shouldExit = true;
+                    informations = new Informations("producer.samplingOpen()", Integer.toString(error));
+                    executeInformers();
+                    return;
+                }
+
+                while(!shouldExit) {
+                    samplingRefresh();
+                }
+                error = samplingClose();
+
+                if (error != 0) {
+                    shouldExit = true;
+                    informations = new Informations("producer.samplingClose()", Integer.toString(error));
+                    executeInformers();
+                    return;
+                }
+            }
+        };
+
+        Runnable consumerTask = new Runnable() {
+            @Override
+            public void run() {
+
+                while (!shouldExit) {
+                    int val;
+                    try {
+                        val = adt7410.readRawValue();
+                    } catch (IOException e) {
+                        val = 0;
+                    } catch (IllegalStateException e) {
+                        val = 0;
+                    }
+                    dataAcquire();
+                    rawData = new RawData(
+                            dataProbeXRawArray(), dataProbeYRawArray(), dataProbeZRawArray(),
+                            dataProbeXRaw(), dataProbeYRaw(), dataProbeZRaw(), dataAuxRaw(0),
+                            dataAuxRaw(1), val, dataGetStats(), dataGetInfos());
+                    dataRelease();
+
+                    executeListeners();
+                }
+            }
+        };
+        producerThread = new Thread(producerTask);
+        producerThread.setPriority(Thread.MAX_PRIORITY);
+        producerThread.start();
+        consumerThread = new Thread(consumerTask);
+        consumerThread.setPriority(Thread.MAX_PRIORITY);
+        consumerThread.start();
+    }
+
+    public void stopSampling() throws InterruptedException {
+        shouldExit = true;
+        producerThread.join(300);
+        consumerThread.join(300);
+    }
+
+    public void attachListener(Runnable runnable) {
+         listeners.add(runnable);
+    }
+
+    public void attachInformer(Runnable runnable) {
+        informers.add(runnable);
+    }
+
+    public double calculateETemp(int input) {
+        return adt7410.calculateTemp(input);
+    }
+
     private class ParamKey {
         ParamKey(String type, String name, int defaultValue) {
             this.type = type;
@@ -57,6 +236,7 @@ final class CdiManager {
         private String name;
         private int value;
     }
+
     private ParamKey[] configKeys = {
             new ParamKey("bool",  "en_x",             1),
             new ParamKey("bool",  "en_y",             1),
@@ -96,61 +276,56 @@ final class CdiManager {
             new ParamKey("int",     "vspeed",           14),
             new ParamKey("int",     "workmode",         0)
     };
+    private volatile boolean shouldExit;
+    private Thread producerThread;
+    private Thread consumerThread;
+    private ADT7410 adt7410;
+    private List<Runnable> listeners;
+    private List<Runnable> informers;
 
-    public CdiManager() {
 
+    private void commonInitialization() throws IOException {
+        adt7410 = new ADT7410(2, 0);
+        listeners = new ArrayList<Runnable>();
+        informers = new ArrayList<Runnable>();
+        informations = new Informations("none", "none");
+        VREF = 2.5;
+        VQUANT = ((VREF * 2.0) / (8388608 - 1)) * 1000.0;
     }
-
-    public CdiManager(int[] configArray) {
-        if (configArray.length != this.configKeys.length) {
-            throw new IllegalArgumentException(String.format(Locale.getDefault(),
-                    "configArray argument must have %d elements, but has %d elements",
-                    this.configKeys.length, configArray.length));
-        }
-
-        for (int i = 0; i < this.configKeys.length; i++) {
-            this.configKeys[i].setValue(configArray[i]);
+    private void executeListeners() {
+        for (Runnable element : listeners) {
+            element.run();
         }
     }
-
-    public void setConfigKey(String name, int value) throws NoSuchElementException {
-        for (ParamKey configKey : this.configKeys) {
-            if (configKey.getName().equals(name)) {
-                configKey.setValue(value);
-                return;
-            }
+    private void executeInformers() {
+        for (Runnable element : informers) {
+            element.run();
         }
-        throw new NoSuchElementException();
     }
-
-    public native int dataProbeXRaw();
-    public native int dataProbeYRaw();
-    public native int dataProbeZRaw();
-    public native int dataAuxRaw(int mchannel);
-
-    public native float dataProbeXVoltage();
-    public native float dataProbeYVoltage();
-    public native float dataProbeZVoltage();
-    public native float dataAuxVoltage(int mchannel);
-
-    public native int[] dataProbeXRawArray();
-    public native int[] dataProbeYRawArray();
-    public native int[] dataProbeZRawArray();
-
-    public native String dataGetStats();
-    public native String dataGetInfos();
-
-    public native int dataAcquire();
-    public native int dataRelease();
-
-    public native int samplingOpen();
-    public native int samplingRefresh();
-    public native int samplingClose();
-    public native int rtcommInit(int[] config);
-
     private void configureFirmware() {
 
     }
+
+    private native int dataProbeXRaw();
+    private native int dataProbeYRaw();
+    private native int dataProbeZRaw();
+    private native int dataAuxRaw(int mchannel);
+    private native float dataProbeXVoltage();
+    private native float dataProbeYVoltage();
+    private native float dataProbeZVoltage();
+    private native float dataAuxVoltage(int mchannel);
+    private native int[] dataProbeXRawArray();
+    private native int[] dataProbeYRawArray();
+    private native int[] dataProbeZRawArray();
+    private native String dataGetStats();
+    private native String dataGetInfos();
+    private native int dataAcquire();
+    private native int dataRelease();
+    private native int samplingOpen();
+    private native int samplingRefresh();
+    private native int samplingClose();
+    private native int rtcommInit(int[] config);
+
     // Used to load the 'cdi_manager' library on application startup.
     static {
         System.loadLibrary("cdi_manager");
